@@ -10,4 +10,20 @@ body,
   min-height: 100vh;
   overflow-x: clip;
   background-color: #f8f9fa;
+  color: #171717;
+  -webkit-font-smoothing: antialiased;
+}
+
+::selection {
+  background-color: #fceee3;
+  color: #c84615;
+}
+
+*:focus-visible {
+  outline: 2px solid #171717;
+  outline-offset: 2px;
+}
+
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
 }

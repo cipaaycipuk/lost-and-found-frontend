@@ -1,23 +1,67 @@
-import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { useEffect, useRef, useState } from 'react'
+import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
+import { Bell, Plus, Search, User, X, CheckCheck } from 'lucide-react'
+import { useAuth } from '../context/AuthContext'
+import {
+  useMarkAllNotificationsReadMutation,
+  useMarkNotificationReadMutation,
+  useNotificationsQuery,
+} from '../hooks/useNotifications'
 
-export default function Navbar({ onSearch }) {
-  const [searchQuery, setSearchQuery] = useState('')
+export default function Navbar() {
+  const navigate = useNavigate()
+  const location = useLocation()
+  const [searchParams, setSearchParams] = useSearchParams()
+  const [searchQuery, setSearchQuery] = useState(searchParams.get('q') || '')
+  const [isNotifOpen, setIsNotifOpen] = useState(false)
+  const notifRef = useRef(null)
 
-  const handleSearchChange = (e) => {
-    setSearchQuery(e.target.value)
-    if (onSearch) onSearch(e.target.value)
+  const { user, isAuthenticated } = useAuth()
+  const { data: notifications = [] } = useNotificationsQuery()
+  const markRead = useMarkNotificationReadMutation()
+  const markAllRead = useMarkAllNotificationsReadMutation()
+
+  const unreadCount = notifications.filter((n) => !n.isRead).length
+
+  useEffect(() => {
+    setSearchQuery(searchParams.get('q') || '')
+  }, [searchParams])
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (notifRef.current && !notifRef.current.contains(e.target)) {
+        setIsNotifOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
+  const applySearch = (value) => {
+    setSearchQuery(value)
+    if (location.pathname !== '/') {
+      navigate(value ? `/?q=${encodeURIComponent(value)}` : '/')
+      return
+    }
+    const next = new URLSearchParams(searchParams)
+    if (value.trim()) {
+      next.set('q', value)
+    } else {
+      next.delete('q')
+    }
+    setSearchParams(next, { replace: true })
   }
 
   return (
     <header className="sticky top-4 z-50 mx-auto w-full max-w-7xl px-4">
-      {/* Container Kapsul Hitam Utama */}
-      <div className="flex items-center justify-between gap-3 rounded-full bg-black/75 backdrop-blur-2xl px-3 py-3.5 text-white shadow-xl lg:px-4">
-        
-        {/* KIRI: Logo Navbar Khusus & Search Bar */}
+      <div className="flex items-center justify-between gap-3 rounded-full bg-black/85 backdrop-blur-2xl px-3 py-3 text-white shadow-xl lg:px-4">
+        {/* KIRI: Logo & Search Bar */}
         <div className="flex flex-1 items-center gap-3">
-          {/* Logo khusus Navbar */}
-          <Link to="/" className="flex-shrink-0 transition hover:opacity-90">
+          <Link
+            to="/"
+            aria-label="Beranda Lost & Found"
+            className="shrink-0 transition hover:opacity-90"
+          >
             <img
               src="/solo.png"
               alt="Lost & Found"
@@ -25,60 +69,122 @@ export default function Navbar({ onSearch }) {
             />
           </Link>
 
-          {/* Search Bar Kapsul Abu-abu */}
-          <div className="flex w-full max-w-sm items-center rounded-full bg-[#ffffff]/25 px-3.5 py-2.5 text-sm text-white lg:max-w-md">
-            {/* Icon Hamburger Menu */}
-            <svg className="mr-2.5 h-4 w-4 flex-shrink-0 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16" />
-            </svg>
-
-            {/* Input Text */}
+          <div className="flex w-full max-w-sm items-center rounded-full bg-white/15 px-3.5 py-2 text-sm text-white transition focus-within:bg-white/20 lg:max-w-md">
+            <Search className="mr-2.5 h-4 w-4 shrink-0 text-gray-300" />
             <input
-              type="text"
-              placeholder="Hinted search text"
+              type="search"
+              aria-label="Cari barang hilang atau ditemukan"
+              placeholder="Cari barang hilang atau ditemukan..."
               value={searchQuery}
-              onChange={handleSearchChange}
-              className="w-full text-sm placeholder-gray-300 text-white outline-none"
+              onChange={(e) => applySearch(e.target.value)}
+              className="w-full bg-transparent text-sm text-white placeholder-gray-300 outline-none"
             />
-
-            {/* Icon Kaca Pembesar */}
-            <svg className="ml-2 h-4 w-4 flex-shrink-0 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-            </svg>
+            {searchQuery && (
+              <button
+                type="button"
+                aria-label="Hapus pencarian"
+                onClick={() => applySearch('')}
+                className="ml-1.5 rounded-full p-0.5 text-gray-300 transition hover:bg-white/15 hover:text-white"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            )}
           </div>
         </div>
 
-        {/* KANAN: Tombol Laporan & Icon Menu */}
-        <div className="flex items-center gap-3 lg:gap-4">
-          {/* Tombol Orange "+ buat laporan" */}
+        {/* KANAN: Tombol Laporan, Notifikasi & Profil */}
+        <div className="flex items-center gap-2 sm:gap-3">
           <Link
             to="/buat-laporan"
-            className="flex items-center gap-1 rounded-full bg-[#e0531c] px-3 py-2 text-xs font-semibold text-white transition hover:bg-[#c84615] active:scale-95 sm:text-sm lg:px-4"
+            className="inline-flex items-center gap-1.5 rounded-full bg-[#e0531c] px-3.5 py-2 text-xs font-semibold text-white transition hover:bg-[#c84615] active:scale-95 sm:text-sm lg:px-4"
           >
-            + buat laporan
+            <Plus className="h-4 w-4" />
+            <span className="hidden sm:inline">Buat Laporan</span>
+            <span className="sm:hidden">Lapor</span>
           </Link>
 
-          {/* Icon Notifikasi */}
-          <button className="relative p-1 text-gray-300 transition hover:text-white">
-            <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth="2"
-                d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"
-              />
-            </svg>
-            <span className="absolute right-1 top-1 h-1.5 w-1.5 rounded-full bg-[#e0531c]" />
-          </button>
+          {/* Notifikasi */}
+          <div className="relative" ref={notifRef}>
+            <button
+              type="button"
+              aria-label="Notifikasi"
+              aria-expanded={isNotifOpen}
+              onClick={() => setIsNotifOpen((prev) => !prev)}
+              className="relative rounded-full p-2 text-gray-300 transition hover:bg-white/10 hover:text-white"
+            >
+              <Bell className="h-5 w-5" />
+              {unreadCount > 0 && (
+                <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-[#e0531c]" />
+              )}
+            </button>
 
-          {/* Icon User / Profil */}
-          <Link to="/profil" className="p-1 text-gray-300 transition hover:text-white">
-            <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-            </svg>
+            {isNotifOpen && (
+              <div className="absolute right-0 mt-3 w-80 overflow-hidden rounded-2xl border border-gray-200 bg-white text-gray-900 shadow-xl">
+                <div className="flex items-center justify-between border-b border-gray-100 px-4 py-3">
+                  <span className="text-sm font-semibold">Notifikasi</span>
+                  {unreadCount > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => markAllRead.mutate()}
+                      className="inline-flex items-center gap-1 text-xs font-medium text-[#e0531c] hover:underline"
+                    >
+                      <CheckCheck className="h-3.5 w-3.5" />
+                      Tandai dibaca
+                    </button>
+                  )}
+                </div>
+                <div className="max-h-72 divide-y divide-gray-100 overflow-y-auto">
+                  {notifications.length === 0 ? (
+                    <p className="px-4 py-8 text-center text-xs text-gray-500">
+                      Belum ada notifikasi.
+                    </p>
+                  ) : (
+                    notifications.map((notif) => (
+                      <button
+                        key={notif.id}
+                        type="button"
+                        onClick={() => {
+                          if (!notif.isRead) markRead.mutate(notif.id)
+                          setIsNotifOpen(false)
+                          navigate('/')
+                        }}
+                        className={`w-full px-4 py-3 text-left transition hover:bg-gray-50 ${
+                          notif.isRead ? 'bg-white' : 'bg-orange-50/50'
+                        }`}
+                      >
+                        <p className="text-xs leading-relaxed text-gray-800">
+                          {notif.message}
+                        </p>
+                        <span className="mt-1 block text-[11px] text-gray-400">
+                          {notif.timeAgo}
+                        </span>
+                      </button>
+                    ))
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Profil / Login */}
+          <Link
+            to={isAuthenticated ? '/profile' : '/login'}
+            aria-label={isAuthenticated ? 'Profil saya' : 'Masuk akun'}
+            className="flex items-center gap-2 rounded-full p-1 text-gray-300 transition hover:bg-white/10 hover:text-white"
+          >
+            {isAuthenticated && user?.avatar ? (
+              <img
+                src={user.avatar}
+                alt={user.name}
+                className="h-8 w-8 rounded-full border border-white/25 object-cover"
+              />
+            ) : (
+              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-white/10">
+                <User className="h-4 w-4" />
+              </span>
+            )}
           </Link>
         </div>
-
       </div>
     </header>
   )
