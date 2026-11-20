@@ -66,7 +66,7 @@ export function normalizePost(raw) {
     id: raw.id,
     type,
     typeLabel: type === 'kehilangan' ? 'Kehilangan' : 'Ditemukan',
-    status: raw.status === 'selesai' ? 'selesai' : 'open',
+    status: raw.status === 'selesai' || raw.status === 'resolved' ? 'selesai' : 'open',
     title: raw.title || raw.nama_barang || 'Tanpa judul',
     category: raw.category || raw.kategori || 'Lainnya',
     location: raw.location || raw.lokasi || '-',

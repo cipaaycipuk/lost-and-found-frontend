@@ -51,6 +51,19 @@ export function AuthProvider({ children }) {
     return data
   }
 
+  const loginWithGoogle = async (payload) => {
+    const data = await authService.loginWithGoogle(payload)
+    persistSession(data.token, data.user)
+    return data
+  }
+
+  const refreshUser = async () => {
+    const me = await authService.getMe()
+    const userObj = me?.user ?? me
+    persistSession(null, userObj)
+    return userObj
+  }
+
   const updateProfile = async (payload) => {
     const updated = await authService.updateProfile(payload)
     persistSession(null, updated)
@@ -71,6 +84,9 @@ export function AuthProvider({ children }) {
         isAuthenticated: Boolean(token || (USE_MOCK && user)),
         login,
         register,
+        loginWithGoogle,
+        persistSession,
+        refreshUser,
         updateProfile,
         logout,
       }}

@@ -1,12 +1,33 @@
-import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { toast } from 'sonner'
 import AuthLayout from '../components/AuthLayout'
+import GoogleAuthButton from '../components/GoogleAuthButton'
 import TextField from '../components/TextField'
+import { useAuth } from '../context/AuthContext'
 import { validateEmail, validatePassword } from '../lib/validators'
 
 export default function Login() {
+  const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  const { login, persistSession, refreshUser } = useAuth()
   const [values, setValues] = useState({ email: '', password: '' })
   const [errors, setErrors] = useState({})
+  const [isSubmitting, setIsSubmitting] = useState(false)
+
+  // Tangani callback jika menggunakan redirect OAuth (?token=...)
+  useEffect(() => {
+    const tokenFromUrl = searchParams.get('token')
+    if (tokenFromUrl) {
+      persistSession(tokenFromUrl, null)
+      refreshUser()
+        .then(() => {
+          toast.success('Login Google berhasil!')
+          navigate('/', { replace: true })
+        })
+        .catch(() => {})
+    }
+  }, [searchParams, persistSession, refreshUser, navigate])
 
   const handleChange = (e) => {
     const { name, value } = e.target
@@ -14,7 +35,7 @@ export default function Login() {
     if (errors[name]) setErrors((prev) => ({ ...prev, [name]: '' }))
   }
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
     const nextErrors = {
       email: validateEmail(values.email),
@@ -23,8 +44,23 @@ export default function Login() {
     setErrors(nextErrors)
     if (Object.values(nextErrors).some(Boolean)) return
 
-    // TODO (tahap backend): kirim values ke API login
-    console.log('login', values)
+    try {
+      setIsSubmitting(true)
+      await login(values)
+      toast.success('Login berhasil!')
+      navigate('/')
+    } catch (err) {
+      if (err.errors) {
+        setErrors((prev) => ({
+          ...prev,
+          email: err.errors.email?.[0] || prev.email,
+          password: err.errors.password?.[0] || prev.password,
+        }))
+      }
+      toast.error(err.message || 'Gagal masuk. Periksa kembali email dan password.')
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   return (
@@ -56,10 +92,19 @@ export default function Login() {
 
         <button
           type="submit"
-          className="h-11 w-full rounded-lg bg-black text-sm font-semibold text-white transition hover:bg-neutral-800 active:scale-[0.99]"
+          disabled={isSubmitting}
+          className="h-11 w-full rounded-lg bg-black text-sm font-semibold text-white transition hover:bg-neutral-800 active:scale-[0.99] disabled:opacity-60"
         >
-          Login
+          {isSubmitting ? 'Memproses...' : 'Login'}
         </button>
+
+        <div className="relative flex items-center py-1">
+          <div className="flex-grow border-t border-gray-200" />
+          <span className="mx-3 shrink-0 text-xs text-gray-400">atau</span>
+          <div className="flex-grow border-t border-gray-200" />
+        </div>
+
+        <GoogleAuthButton label="Continue with Google" />
 
         <p className="text-sm">
           Don&apos;t have an account yet?{' '}

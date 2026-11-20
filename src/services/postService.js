@@ -7,6 +7,14 @@ const delay = (ms = 300) => new Promise((resolve) => setTimeout(resolve, ms))
 // In-memory store for mock mode so create/bookmark/status updates persist during session
 let mockPostsStore = INITIAL_POSTS.map(normalizePost)
 
+const extractList = (res) => {
+  const payload = res?.data ?? res
+  if (Array.isArray(payload)) return payload
+  if (Array.isArray(payload?.data)) return payload.data
+  if (Array.isArray(payload?.posts)) return payload.posts
+  return []
+}
+
 export const postService = {
   async getPosts(params = {}) {
     if (USE_MOCK) {
@@ -50,9 +58,16 @@ export const postService = {
       return items
     }
 
-    const res = await apiClient.get('/posts', { params })
-    const rawList = res.data ?? res
-    return Array.isArray(rawList) ? rawList.map(normalizePost) : []
+    try {
+      const res = await apiClient.get('/posts', { params })
+      const rawList = extractList(res)
+      return rawList.map(normalizePost)
+    } catch (err) {
+      if (!err.status) {
+        return mockPostsStore
+      }
+      throw err
+    }
   },
 
   async getPostById(id) {
@@ -64,13 +79,18 @@ export const postService = {
     }
 
     const res = await apiClient.get(`/posts/${id}`)
-    return normalizePost(res.data ?? res)
+    const payload = res?.data ?? res
+    return normalizePost(payload?.post ?? payload)
   },
 
   async createPost(formData) {
     if (USE_MOCK) {
       await delay(450)
-      const files = formData.getAll('images')
+      const files = [
+        ...formData.getAll('images[]'),
+        ...formData.getAll('images'),
+        ...formData.getAll('foto'),
+      ]
       const previewUrls = files
         .filter((f) => f instanceof File)
         .map((f) => URL.createObjectURL(f))
@@ -80,13 +100,13 @@ export const postService = {
 
       const newPost = normalizePost({
         id: Date.now(),
-        type: formData.get('type') || 'kehilangan',
+        type: formData.get('type') || formData.get('tipe') || 'kehilangan',
         status: 'open',
-        title: formData.get('title'),
-        category: formData.get('category'),
-        location: formData.get('location'),
-        incident_date: formData.get('incident_date'),
-        description: formData.get('description'),
+        title: formData.get('title') || formData.get('nama_barang'),
+        category: formData.get('category') || formData.get('kategori'),
+        location: formData.get('location') || formData.get('lokasi') || '-',
+        incident_date: formData.get('incident_date') || formData.get('tanggal'),
+        description: formData.get('description') || formData.get('deskripsi'),
         images: previewUrls,
         comments_count: 0,
         is_saved: false,
@@ -101,7 +121,8 @@ export const postService = {
     const res = await apiClient.post('/posts', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
     })
-    return normalizePost(res.data ?? res)
+    const payload = res?.data ?? res
+    return normalizePost(payload?.post ?? payload)
   },
 
   async updatePostStatus(id, status) {
@@ -114,7 +135,8 @@ export const postService = {
     }
 
     const res = await apiClient.patch(`/posts/${id}/status`, { status })
-    return normalizePost(res.data ?? res)
+    const payload = res?.data ?? res
+    return normalizePost(payload?.post ?? payload)
   },
 
   async deletePost(id) {
@@ -133,7 +155,7 @@ export const postService = {
       let updatedPost = null
       mockPostsStore = mockPostsStore.map((p) => {
         if (String(p.id) === String(id)) {
-          updatedPost = { ...p, isSaved: !p.isSaved }
+          updatedPost = { ...p, isSaved: !p.isSaved, is_saved: !p.isSaved }
           return updatedPost
         }
         return p
@@ -142,7 +164,11 @@ export const postService = {
     }
 
     const res = await apiClient.post(`/posts/${id}/bookmark`)
-    return res.data ?? res
+    const data = res?.data ?? res
+    return {
+      ...data,
+      isSaved: Boolean(data?.is_saved ?? data?.isSaved),
+    }
   },
 
   async getMyPosts() {
@@ -155,9 +181,19 @@ export const postService = {
       )
     }
 
-    const res = await apiClient.get('/posts/me')
-    const rawList = res.data ?? res
-    return Array.isArray(rawList) ? rawList.map(normalizePost) : []
+    try {
+      const res = await apiClient.get('/posts/me')
+      return extractList(res).map(normalizePost)
+    } catch (err) {
+      if (!err.status) {
+        const savedUser = localStorage.getItem('auth_user')
+        const me = savedUser ? JSON.parse(savedUser) : currentUser
+        return mockPostsStore.filter(
+          (p) => p.author.id === me.id || p.author.email === me.email
+        )
+      }
+      throw err
+    }
   },
 
   async getSavedPosts() {
@@ -166,8 +202,14 @@ export const postService = {
       return mockPostsStore.filter((p) => p.isSaved)
     }
 
-    const res = await apiClient.get('/posts/saved')
-    const rawList = res.data ?? res
-    return Array.isArray(rawList) ? rawList.map(normalizePost) : []
+    try {
+      const res = await apiClient.get('/posts/saved')
+      return extractList(res).map(normalizePost)
+    } catch (err) {
+      if (!err.status) {
+        return mockPostsStore.filter((p) => p.isSaved)
+      }
+      throw err
+    }
   },
 }

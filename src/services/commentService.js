@@ -5,6 +5,47 @@ const delay = (ms = 220) => new Promise((resolve) => setTimeout(resolve, ms))
 
 const mockCommentsStore = { ...INITIAL_COMMENTS }
 
+const normalizeComment = (c) => ({
+  id: c.id,
+  post_id: c.post_id,
+  parent_id: c.parent_id ?? null,
+  user:
+    typeof c.user === 'string'
+      ? c.user
+      : c.user?.name || c.author?.name || 'Pengguna',
+  avatar:
+    c.avatar ||
+    c.user?.avatar_url ||
+    c.user?.avatar ||
+    c.author?.avatar_url ||
+    c.author?.avatar ||
+    '',
+  text: c.text || c.content || '',
+  content: c.content || c.text || '',
+  isReply: Boolean(c.isReply || c.parent_id),
+  created_at: c.created_at,
+})
+
+const flattenComments = (list) => {
+  if (!Array.isArray(list)) return []
+  const result = []
+  list.forEach((item) => {
+    result.push(normalizeComment(item))
+    if (Array.isArray(item.replies)) {
+      item.replies.forEach((reply) => {
+        result.push(
+          normalizeComment({
+            ...reply,
+            parent_id: reply.parent_id ?? item.id,
+            isReply: true,
+          })
+        )
+      })
+    }
+  })
+  return result
+}
+
 export const commentService = {
   async getComments(postId) {
     if (USE_MOCK) {
@@ -12,8 +53,17 @@ export const commentService = {
       return mockCommentsStore[postId] ? [...mockCommentsStore[postId]] : []
     }
 
-    const res = await apiClient.get(`/posts/${postId}/comments`)
-    return res.data ?? res
+    try {
+      const res = await apiClient.get(`/posts/${postId}/comments`)
+      const raw = res?.data ?? res
+      const list = Array.isArray(raw) ? raw : raw?.data || raw?.comments || []
+      return flattenComments(list)
+    } catch (err) {
+      if (!err.status) {
+        return mockCommentsStore[postId] ? [...mockCommentsStore[postId]] : []
+      }
+      throw err
+    }
   },
 
   async createComment(postId, { content, parentId = null }) {
@@ -41,7 +91,7 @@ export const commentService = {
       content,
       parent_id: parentId,
     })
-    return res.data ?? res
+    return normalizeComment(res?.data ?? res)
   },
 
   async deleteComment(commentId) {

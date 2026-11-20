@@ -1,5 +1,7 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import FileUploader from "../components/FileUploader";
+import { useCreatePostMutation } from "../hooks/usePosts";
 
 const KATEGORI = [
   "Dompet & Tas",
@@ -11,9 +13,19 @@ const KATEGORI = [
   "Lainnya",
 ];
 
+const LOKASI = [
+  "Foodcourt / Kantin",
+  "Gedung A",
+  "Gedung B",
+  "Perpustakaan",
+  "Area Parkir",
+  "Lainnya",
+];
+
 const TIPE = {
   kehilangan: {
     label: "Kehilangan",
+    labelLokasi: "Lokasi terakhir terlihat",
     labelTanggal: "Kapan hilang?",
     placeholderDeskripsi:
       "Ciri-ciri barang dan detail tempat hilang.\nContoh: tertinggal di meja dekat jendela gedung b lantai 2",
@@ -24,6 +36,7 @@ const TIPE = {
   },
   ditemukan: {
     label: "Ditemukan",
+    labelLokasi: "Lokasi ditemukan",
     labelTanggal: "Kapan ditemukan?",
     placeholderDeskripsi:
       "Ciri-ciri barang dan detail tempat ditemukan.\nContoh: ditemukan di meja dekat jendela gedung b lantai 2",
@@ -37,18 +50,22 @@ const TIPE = {
 const formAwal = {
   namaBarang: "",
   kategori: "",
+  lokasi: "",
   tanggal: "",
   deskripsi: "",
 };
 
 export default function FormLaporan() {
+  const navigate = useNavigate();
+  const createPost = useCreatePostMutation();
+
   const [tipe, setTipe] = useState("kehilangan");
   const [form, setForm] = useState(formAwal);
-  const [fotos, setFotos] = useState([]); // array File, bukan null
+  const [fotos, setFotos] = useState([]);
   const [errors, setErrors] = useState({});
-  const [loading, setLoading] = useState(false);
 
   const tema = TIPE[tipe];
+  const loading = createPost.isPending;
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -60,6 +77,7 @@ export default function FormLaporan() {
     const err = {};
     if (!form.namaBarang.trim()) err.namaBarang = "Nama barang wajib diisi";
     if (!form.kategori) err.kategori = "Pilih kategori";
+    if (!form.lokasi.trim()) err.lokasi = "Lokasi wajib diisi";
     if (!form.tanggal) err.tanggal = "Pilih tanggal";
     if (!form.deskripsi.trim()) err.deskripsi = "Deskripsi wajib diisi";
     return err;
@@ -72,23 +90,24 @@ export default function FormLaporan() {
     if (Object.keys(err).length > 0) return;
 
     const data = new FormData();
-    data.append("tipe", tipe);
-    data.append("nama_barang", form.namaBarang);
-    data.append("kategori", form.kategori);
-    data.append("tanggal", form.tanggal);
-    data.append("deskripsi", form.deskripsi);
-    fotos.forEach((f) => data.append("foto", f));
+    data.append("type", tipe);
+    data.append("title", form.namaBarang.trim());
+    data.append("category", form.kategori);
+    data.append("location", form.lokasi.trim());
+    data.append("incident_date", form.tanggal);
+    data.append("description", form.deskripsi.trim());
+    fotos.forEach((f) => {
+      data.append("images[]", f);
+      data.append("images", f);
+    });
 
-    try {
-      setLoading(true);
-      // TODO: ganti dengan endpoint API kamu
-      // await fetch("/api/laporan", { method: "POST", body: data });
-      console.log([...data.entries()]); // pakai entries biasa: Object.fromEntries menimpa key "foto" yang berulang
-      setForm(formAwal);
-      setFotos([]);
-    } finally {
-      setLoading(false);
-    }
+    createPost.mutate(data, {
+      onSuccess: () => {
+        setForm(formAwal);
+        setFotos([]);
+        navigate("/");
+      },
+    });
   };
 
   const inputBase =
@@ -180,6 +199,41 @@ export default function FormLaporan() {
             </svg>
           </div>
           {errorText("kategori")}
+        </div>
+
+        {/* Lokasi */}
+        <div className="mb-4">
+          <label htmlFor="lokasi" className="mb-1.5 block text-sm font-medium">
+            {tema.labelLokasi}
+          </label>
+          <div className="relative">
+            <select
+              id="lokasi"
+              name="lokasi"
+              value={form.lokasi}
+              onChange={handleChange}
+              className={`${inputBase} ${tema.ring} appearance-none pr-9 ${
+                form.lokasi ? "" : "text-gray-400"
+              }`}
+            >
+              <option value="" disabled>
+                Pilih lokasi kampus
+              </option>
+              {LOKASI.map((loc) => (
+                <option key={loc} value={loc} className="text-gray-900">
+                  {loc}
+                </option>
+              ))}
+            </select>
+            <svg
+              className="pointer-events-none absolute right-3 top-1/2 h-3 w-3 -translate-y-1/2 text-gray-900"
+              viewBox="0 0 10 6"
+              fill="currentColor"
+            >
+              <path d="M0 0l5 6 5-6z" />
+            </svg>
+          </div>
+          {errorText("lokasi")}
         </div>
 
         {/* Tanggal */}
