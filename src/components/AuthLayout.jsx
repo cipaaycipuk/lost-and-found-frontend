@@ -1,22 +1,22 @@
-import { useState } from 'react'
+// import { useState } from 'react'
 import GradientBlinds from './GradientBlinds'
-import GridDistortion from './GridDistortion'
+// import GridDistortion from './GridDistortion'
 import Logo from './Logo'
 
-const BACKGROUND_OPTIONS = [
-  { id: 'blinds', label: 'Gradient Blinds' },
-  { id: 'grid', label: 'Grid Distortion' },
-]
+// const BACKGROUND_OPTIONS = [
+//   { id: 'blinds', label: 'Gradient Blinds' },
+//   { id: 'grid', label: 'Grid Distortion' },
+// ]
 
 export default function AuthLayout({ title, subtitle, children }) {
-  const [bgMode, setBgMode] = useState(() => {
-    return localStorage.getItem('auth_bg_mode') || 'blinds'
-  })
+  // const [bgMode, setBgMode] = useState(() => {
+  //   return localStorage.getItem('auth_bg_mode') || 'blinds'
+  // })
 
-  const handleSelectBg = (mode) => {
-    setBgMode(mode)
-    localStorage.setItem('auth_bg_mode', mode)
-  }
+  // const handleSelectBg = (mode) => {
+  //   setBgMode(mode)
+  //   localStorage.setItem('auth_bg_mode', mode)
+  // }
 
   return (
     // Outer Container
@@ -28,7 +28,7 @@ export default function AuthLayout({ title, subtitle, children }) {
         {/* Panel Gambar Kiri: Mendukung dua opsi efek interaktif (GradientBlinds & GridDistortion) */}
         <aside className="relative hidden min-h-[580px] w-full flex-col justify-between overflow-hidden rounded-xl bg-black p-8 lg:flex">
           <div className="absolute inset-0">
-            {bgMode === 'grid' ? (
+            {/* {bgMode === 'grid' ? (
               <GridDistortion
                 imageSrc="/gradient.png"
                 grid={15}
@@ -42,12 +42,14 @@ export default function AuthLayout({ title, subtitle, children }) {
                 intro
               />
             ) : (
-              <GradientBlinds
+              
+            )} */}
+            <GradientBlinds
                 gradientColors={['#e0531c', '#001994', '#111827']}
-                angle={18}
+                angle={0}
                 noise={0.25}
                 blindCount={14}
-                blindMinWidth={56}
+                blindMinWidth={40}
                 spotlightRadius={0.55}
                 spotlightSoftness={1.1}
                 spotlightOpacity={0.95}
@@ -55,7 +57,6 @@ export default function AuthLayout({ title, subtitle, children }) {
                 mouseDampening={0.15}
                 shineDirection="left"
               />
-            )}
           </div>
 
           <h2 className="pointer-events-none relative z-10 max-w-xs text-3xl font-medium leading-tight text-white xl:text-4xl">
@@ -63,7 +64,7 @@ export default function AuthLayout({ title, subtitle, children }) {
           </h2>
 
           {/* Switcher 2 opsi efek background */}
-          <div className="relative z-10 inline-flex w-fit items-center gap-1 rounded-full border border-white/15 bg-black/45 p-1 backdrop-blur-md">
+          {/* <div className="relative z-10 inline-flex w-fit items-center gap-1 rounded-full border border-white/15 bg-black/45 p-1 backdrop-blur-md">
             {BACKGROUND_OPTIONS.map((opt) => {
               const active = bgMode === opt.id
               return (
@@ -81,7 +82,7 @@ export default function AuthLayout({ title, subtitle, children }) {
                 </button>
               )
             })}
-          </div>
+          </div> */}
         </aside>
 
         {/* Form Area */}
