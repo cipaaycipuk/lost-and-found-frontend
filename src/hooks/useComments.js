@@ -14,14 +14,18 @@ export function useCommentsQuery(postId) {
 export function useCreateCommentMutation(postId) {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (payload) => commentService.createComment(postId, payload),
+    mutationFn: (payload) => {
+      const promise = commentService.createComment(postId, payload)
+      toast.promise(promise, {
+        loading: 'Mengirim komentar...',
+        success: 'Komentar terkirim.',
+        error: (err) => err?.message || 'Gagal mengirim komentar.',
+      })
+      return promise
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['comments', String(postId)] })
       queryClient.invalidateQueries({ queryKey: postKeys.all })
-      toast.success('Komentar terkirim.')
-    },
-    onError: (err) => {
-      toast.error(err.message || 'Gagal mengirim komentar.')
     },
   })
 }

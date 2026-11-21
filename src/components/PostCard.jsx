@@ -1,17 +1,21 @@
-import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   MapPin,
   CalendarDays,
-  MessageSquareReply,
+  MessageSquare,
   Bookmark,
-  Phone,
-  X,
   CheckCircle2,
-  Trash2,
-  Tag,
+  MoreVertical,
 } from 'lucide-react'
 import Avatar from './Avatar'
+import PostImageGrid from './PostImageGrid'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { useAuth } from '../context/AuthContext'
 import { formatWhatsAppUrl } from '../lib/formatters'
 import {
@@ -25,7 +29,20 @@ export default function PostCard({ post, isOwner = false, onSelect }) {
   const { user } = useAuth()
   const isKehilangan = post.type === 'kehilangan'
   const isDone = post.status === 'selesai'
-  const [isImageOpen, setIsImageOpen] = useState(false)
+  const canManage =
+    isOwner || (Boolean(user?.id) && String(user.id) === String(post.author?.id))
+
+  const toggleBookmark = useToggleBookmarkMutation()
+  const updateStatus = useUpdatePostStatusMutation()
+  const deletePost = useDeletePostMutation()
+
+  const handleOpenPost = () => {
+    if (onSelect) {
+      onSelect(post)
+      return
+    }
+    navigate(`/posts/${post.id}`, { state: { post } })
+  }
 
   const handleOpenAuthorProfile = (e) => {
     e.stopPropagation()
@@ -37,52 +54,48 @@ export default function PostCard({ post, isOwner = false, onSelect }) {
     navigate(targetPath, { state: { author: post.author } })
   }
 
-  const toggleBookmark = useToggleBookmarkMutation()
-  const updateStatus = useUpdatePostStatusMutation()
-  const deletePost = useDeletePostMutation()
-
   const waUrl = formatWhatsAppUrl(
     post.author?.whatsapp,
     `Halo ${post.author?.name || ''}, saya melihat laporan "${post.title}" di Lost & Found.`
   )
 
-  useEffect(() => {
-    if (!isImageOpen) return
-    const onKeyDown = (e) => {
-      if (e.key === 'Escape') setIsImageOpen(false)
-    }
-    window.addEventListener('keydown', onKeyDown)
-    return () => window.removeEventListener('keydown', onKeyDown)
-  }, [isImageOpen])
+  const sideBorderStyle = {
+    borderLeftWidth: '5px',
+    borderLeftColor: isKehilangan ? '#F05A00' : '#0026FF',
+  }
 
   return (
     <article
-      onClick={() => onSelect?.(post)}
-      className={`space-y-4 rounded-xl border border-gray-200/90 bg-white p-5 shadow-sm transition hover:border-gray-300 hover:shadow-md ${
-        onSelect ? 'cursor-pointer' : ''
-      } ${isDone ? 'opacity-85' : ''}`}
+      onClick={handleOpenPost}
+      style={sideBorderStyle}
+      className={`cursor-pointer space-y-3.5 rounded-xl border border-gray-200/90 bg-white p-4 shadow-sm transition hover:border-gray-300 hover:shadow-md sm:space-y-4 sm:p-5 ${
+        isDone ? 'opacity-85' : ''
+      }`}
     >
       {/* Header Post */}
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex items-center justify-between gap-2 sm:gap-3">
         <div
           onClick={handleOpenAuthorProfile}
-          className="group/author flex min-w-0 cursor-pointer items-center gap-3"
+          className="group/author flex min-w-0 cursor-pointer items-center gap-2.5 sm:gap-3"
         >
           <Avatar
             src={post.author?.avatar}
             name={post.author?.name}
-            className="h-11 w-11 shrink-0 text-sm transition group-hover/author:ring-2 group-hover/author:ring-black/20"
+            className="h-10 w-10 shrink-0 text-sm transition group-hover/author:ring-2 group-hover/author:ring-black/20 sm:h-11 sm:w-11"
           />
 
           <div className="min-w-0">
             <h3 className="truncate text-sm font-bold text-gray-900 group-hover/author:underline">
               {post.author?.name}
             </h3>
-            <p className="text-xs text-gray-500">{post.timeAgo}</p>
+            <p className="text-xs text-gray-400">{post.timeAgo}</p>
           </div>
         </div>
 
-        <div className="flex shrink-0 items-center gap-2">
+        <div
+          onClick={(e) => e.stopPropagation()}
+          className="relative flex shrink-0 items-center gap-1.5 sm:gap-2"
+        >
           {isDone && (
             <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700">
               <CheckCircle2 size={13} />
@@ -90,112 +103,112 @@ export default function PostCard({ post, isOwner = false, onSelect }) {
             </span>
           )}
           <span
-            className={`rounded-full px-3 py-1 text-xs font-bold ${
+            className={`rounded-full px-3.5 py-1 text-xs font-bold ${
               isKehilangan
-                ? 'bg-[#FCEEE3] text-[#d95200]'
-                : 'bg-[#D8DEFF] text-[#001C99]'
+                ? 'bg-[#FCEEE3] text-[#F05A00]'
+                : 'bg-[#E2E6FF] text-[#0026FF]'
             }`}
           >
             {post.typeLabel || (isKehilangan ? 'Kehilangan' : 'Ditemukan')}
           </span>
+
+          {canManage && (
+            <DropdownMenu>
+              <DropdownMenuTrigger
+                aria-label="Opsi laporan"
+                className="inline-flex h-8 w-8 items-center justify-center rounded-full text-gray-700 outline-none transition hover:bg-gray-100"
+              >
+                <MoreVertical size={18} />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent
+                align="end"
+                sideOffset={6}
+                className="w-44 rounded-xl border border-gray-100 bg-white p-1 shadow-lg"
+              >
+                <DropdownMenuItem
+                  disabled={updateStatus.isPending}
+                  onClick={() =>
+                    updateStatus.mutate({
+                      id: post.id,
+                      status: isDone ? 'open' : 'selesai',
+                    })
+                  }
+                  className="cursor-pointer rounded-lg px-3 py-2 text-sm font-medium text-gray-900"
+                >
+                  {isDone ? 'Buka kembali' : 'Tandai selesai'}
+                </DropdownMenuItem>
+                <DropdownMenuSeparator className="my-0.5 bg-gray-100" />
+                <DropdownMenuItem
+                  onClick={() =>
+                    navigate(`/edit-laporan/${post.id}`, {
+                      state: { editPost: post },
+                    })
+                  }
+                  className="cursor-pointer rounded-lg px-3 py-2 text-sm font-medium text-gray-900"
+                >
+                  Edit
+                </DropdownMenuItem>
+                <DropdownMenuSeparator className="my-0.5 bg-gray-100" />
+                <DropdownMenuItem
+                  variant="destructive"
+                  disabled={deletePost.isPending}
+                  onClick={() => deletePost.mutate(post.id)}
+                  className="cursor-pointer rounded-lg px-3 py-2 text-sm font-medium"
+                >
+                  Hapus
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
         </div>
       </div>
 
-      {/* Foto Barang */}
-      {post.image && (
-        <div
-          className="aspect-[16/10] w-full cursor-zoom-in overflow-hidden rounded-lg bg-gray-100"
-          onClick={(e) => {
-            e.stopPropagation()
-            setIsImageOpen(true)
-          }}
-        >
-          <img
-            src={post.image}
-            alt={post.title}
-            loading="lazy"
-            className="h-full w-full object-cover object-center transition duration-300 hover:scale-[1.02]"
-          />
-        </div>
-      )}
+      {/* Foto Barang (Grid Multi-Gambar) */}
+      <PostImageGrid
+        images={post.images}
+        fallbackImage={post.image}
+        title={post.title}
+      />
 
       {/* Detail Konten */}
-      <div className="space-y-3">
-        <h2 className="text-lg font-bold leading-snug text-gray-900">
+      <div className="space-y-2.5">
+        <h2 className="text-base font-bold leading-snug text-gray-900 sm:text-lg">
           {post.title}
         </h2>
 
-        <div className="flex flex-wrap gap-2 text-xs">
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-gray-200 bg-gray-50 px-3 py-1.5 font-medium text-gray-700">
-            <MapPin size={14} className="text-gray-500" />
+        <div className="flex flex-wrap gap-1.5 text-xs sm:gap-2">
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-gray-300 bg-[#EFEFEF] px-3 py-1 font-medium text-gray-500">
+            <MapPin size={13} className="text-gray-400" />
             {post.location}
           </span>
 
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-gray-200 bg-gray-50 px-3 py-1.5 font-medium text-gray-700">
-            <CalendarDays size={14} className="text-gray-500" />
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-gray-300 bg-[#EFEFEF] px-3 py-1 font-medium text-gray-500">
+            <CalendarDays size={13} className="text-gray-400" />
             {post.date}
           </span>
 
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-gray-200 bg-gray-50 px-3 py-1.5 font-medium text-gray-700">
-            <Tag size={14} className="text-gray-500" />
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-gray-300 bg-[#EFEFEF] px-3 py-1 font-medium text-gray-500">
             {post.category}
           </span>
         </div>
 
-        <p className="line-clamp-3 text-sm leading-relaxed text-gray-600">
+        <p className="line-clamp-3 text-sm leading-relaxed text-gray-800">
           {post.description}
         </p>
       </div>
 
-      {/* Owner Actions (hanya di Profil) */}
-      {isOwner && (
-        <div
-          onClick={(e) => e.stopPropagation()}
-          className="flex flex-wrap items-center gap-2 border-t border-gray-100 pt-3"
-        >
-          <button
-            type="button"
-            disabled={updateStatus.isPending}
-            onClick={() =>
-              updateStatus.mutate({
-                id: post.id,
-                status: isDone ? 'open' : 'selesai',
-              })
-            }
-            className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold transition ${
-              isDone
-                ? 'border-gray-200 bg-gray-50 text-gray-700 hover:bg-gray-100'
-                : 'border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
-            }`}
-          >
-            <CheckCircle2 size={14} />
-            {isDone ? 'Buka Kembali' : 'Tandai Selesai'}
-          </button>
-
-          <button
-            type="button"
-            disabled={deletePost.isPending}
-            onClick={() => deletePost.mutate(post.id)}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-semibold text-red-700 transition hover:bg-red-100"
-          >
-            <Trash2 size={14} />
-            Hapus
-          </button>
-        </div>
-      )}
-
       {/* Footer Post */}
       <div
         onClick={(e) => e.stopPropagation()}
-        className="flex flex-wrap items-center justify-between gap-3 border-t border-gray-100 pt-3"
+        className="flex flex-wrap items-center justify-between gap-3 border-t border-gray-200 pt-3"
       >
-        <div className="flex items-center gap-5 text-sm font-medium text-gray-500">
+        <div className="flex items-center gap-4 text-xs font-medium text-gray-400 sm:gap-5 sm:text-sm">
           <button
             type="button"
-            onClick={() => onSelect?.(post)}
-            className="flex items-center gap-1.5 transition hover:text-black"
+            onClick={handleOpenPost}
+            className="flex min-h-[36px] items-center gap-1.5 transition hover:text-gray-900"
           >
-            <MessageSquareReply size={18} />
+            <MessageSquare size={16} />
             <span className="tabular-nums">{post.commentsCount || 0}</span>
           </button>
 
@@ -203,13 +216,13 @@ export default function PostCard({ post, isOwner = false, onSelect }) {
             type="button"
             disabled={toggleBookmark.isPending}
             onClick={() => toggleBookmark.mutate(post.id)}
-            className={`flex items-center gap-1.5 transition ${
-              post.isSaved ? 'font-semibold text-[#e0531c]' : 'hover:text-black'
+            className={`flex min-h-[36px] items-center gap-1.5 transition ${
+              post.isSaved ? 'font-semibold text-[#F05A00]' : 'hover:text-gray-900'
             }`}
           >
             <Bookmark
-              size={18}
-              className={post.isSaved ? 'fill-[#e0531c]' : ''}
+              size={16}
+              className={post.isSaved ? 'fill-[#F05A00]' : ''}
             />
             <span>{post.isSaved ? 'Tersimpan' : 'Simpan'}</span>
           </button>
@@ -220,43 +233,13 @@ export default function PostCard({ post, isOwner = false, onSelect }) {
             href={waUrl}
             target="_blank"
             rel="noreferrer"
-            className="inline-flex items-center gap-2 rounded-full bg-[#232323] px-4 py-2 text-xs font-semibold text-white transition hover:bg-neutral-800 sm:text-sm"
+            className="inline-flex min-h-[36px] items-center gap-2 rounded-full bg-[#1C1C1C] px-4 py-2 text-xs font-semibold text-white transition hover:bg-neutral-800"
           >
-            <Phone size={15} />
-            Hubungi WhatsApp
+            <MessageSquare size={14} />
+            Hubungi Whatsapp
           </a>
         )}
       </div>
-
-      {/* Lightbox */}
-      {isImageOpen && (
-        <div
-          className="fixed inset-0 z-[999] flex items-center justify-center bg-black/90 p-4"
-          onClick={(e) => {
-            e.stopPropagation()
-            setIsImageOpen(false)
-          }}
-        >
-          <button
-            type="button"
-            aria-label="Tutup pratinjau gambar"
-            onClick={(e) => {
-              e.stopPropagation()
-              setIsImageOpen(false)
-            }}
-            className="absolute right-5 top-5 rounded-full bg-white/10 p-2 text-white transition hover:bg-white/20"
-          >
-            <X size={24} />
-          </button>
-
-          <img
-            src={post.image}
-            alt={post.title}
-            onClick={(e) => e.stopPropagation()}
-            className="max-h-[90vh] max-w-[95vw] rounded-lg object-contain"
-          />
-        </div>
-      )}
     </article>
   )
 }

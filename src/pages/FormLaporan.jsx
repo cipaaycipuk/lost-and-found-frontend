@@ -1,7 +1,20 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import FileUploader from "../components/FileUploader";
-import { useCreatePostMutation } from "../hooks/usePosts";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  useCreatePostMutation,
+  usePostDetailQuery,
+  useUpdatePostMutation,
+} from "../hooks/usePosts";
 
 const KATEGORI = [
   "Dompet & Tas",
@@ -56,16 +69,53 @@ const formAwal = {
 };
 
 export default function FormLaporan() {
+  const { postId } = useParams();
+  const location = useLocation();
   const navigate = useNavigate();
   const createPost = useCreatePostMutation();
+  const updatePost = useUpdatePostMutation();
 
-  const [tipe, setTipe] = useState("kehilangan");
-  const [form, setForm] = useState(formAwal);
-  const [fotos, setFotos] = useState([]);
+  const isEditMode = Boolean(postId);
+  const { data: fetchedPost } = usePostDetailQuery(postId);
+  const editPost = location.state?.editPost || fetchedPost || null;
+
+  const [tipe, setTipe] = useState(editPost?.type || "kehilangan");
+  const [form, setForm] = useState({
+    namaBarang: editPost?.title || "",
+    kategori: editPost?.category || "",
+    lokasi: editPost?.location || "",
+    tanggal: editPost?.rawDate ? String(editPost.rawDate).slice(0, 10) : "",
+    deskripsi: editPost?.description || "",
+  });
+  const [fotos, setFotos] = useState(() => {
+    if (Array.isArray(editPost?.images) && editPost.images.length > 0) {
+      return editPost.images;
+    }
+    return editPost?.image ? [editPost.image] : [];
+  });
   const [errors, setErrors] = useState({});
 
+  useEffect(() => {
+    if (!editPost) return;
+    setTipe(editPost.type || "kehilangan");
+    setForm({
+      namaBarang: editPost.title || "",
+      kategori: editPost.category || "",
+      lokasi: editPost.location || "",
+      tanggal: editPost.rawDate ? String(editPost.rawDate).slice(0, 10) : "",
+      deskripsi: editPost.description || "",
+    });
+    const existingImgs =
+      Array.isArray(editPost.images) && editPost.images.length > 0
+        ? editPost.images
+        : editPost.image
+          ? [editPost.image]
+          : [];
+    setFotos(existingImgs);
+  }, [editPost]);
+
   const tema = TIPE[tipe];
-  const loading = createPost.isPending;
+  const loading = createPost.isPending || updatePost.isPending;
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -97,8 +147,24 @@ export default function FormLaporan() {
     data.append("incident_date", form.tanggal);
     data.append("description", form.deskripsi.trim());
     fotos.forEach((f) => {
-      data.append("images[]", f);
+      if (f instanceof File) {
+        data.append("images[]", f);
+      } else if (typeof f === "string") {
+        data.append("existing_images[]", f);
+      }
     });
+
+    if (isEditMode) {
+      updatePost.mutate(
+        { id: postId, payload: data },
+        {
+          onSuccess: () => {
+            navigate(`/posts/${postId}`, { replace: true });
+          },
+        }
+      );
+      return;
+    }
 
     createPost.mutate(data, {
       onSuccess: () => {
@@ -120,7 +186,9 @@ export default function FormLaporan() {
   return (
     <div className="mx-auto my-8 max-w-3xl bg-white p-5">
       <form onSubmit={handleSubmit} noValidate className="w-full">
-        <h1 className="mb-3 text-xl font-semibold">Buat Laporan</h1>
+        <h1 className="mb-3 text-xl font-semibold">
+          {isEditMode ? "Edit Laporan" : "Buat Laporan"}
+        </h1>
 
         <div
           role="tablist"
@@ -153,14 +221,14 @@ export default function FormLaporan() {
           <label htmlFor="namaBarang" className="mb-1.5 block text-sm font-medium">
             Nama Barang
           </label>
-          <input
+          <Input
             id="namaBarang"
             name="namaBarang"
             type="text"
             value={form.namaBarang}
             onChange={handleChange}
             placeholder="Contoh: Dompet hitam"
-            className={`${inputBase} ${tema.ring}`}
+            className="h-11 rounded-md border-0 bg-[#ebebeb] px-3.5 text-sm text-gray-900"
           />
           {errorText("namaBarang")}
         </div>
@@ -170,33 +238,28 @@ export default function FormLaporan() {
           <label htmlFor="kategori" className="mb-1.5 block text-sm font-medium">
             Kategori
           </label>
-          <div className="relative">
-            <select
+          <Select
+            value={form.kategori}
+            onValueChange={(val) => {
+              setForm((prev) => ({ ...prev, kategori: val }));
+              if (errors.kategori)
+                setErrors((prev) => ({ ...prev, kategori: undefined }));
+            }}
+          >
+            <SelectTrigger
               id="kategori"
-              name="kategori"
-              value={form.kategori}
-              onChange={handleChange}
-              className={`${inputBase} ${tema.ring} appearance-none pr-9 ${
-                form.kategori ? "" : "text-gray-400"
-              }`}
+              className="h-11 w-full rounded-md border-0 bg-[#ebebeb] px-3.5 text-sm text-gray-900"
             >
-              <option value="" disabled>
-                Pilih kategori
-              </option>
+              <SelectValue placeholder="Pilih kategori" />
+            </SelectTrigger>
+            <SelectContent>
               {KATEGORI.map((k) => (
-                <option key={k} value={k} className="text-gray-900">
+                <SelectItem key={k} value={k}>
                   {k}
-                </option>
+                </SelectItem>
               ))}
-            </select>
-            <svg
-              className="pointer-events-none absolute right-3 top-1/2 h-3 w-3 -translate-y-1/2 text-gray-900"
-              viewBox="0 0 10 6"
-              fill="currentColor"
-            >
-              <path d="M0 0l5 6 5-6z" />
-            </svg>
-          </div>
+            </SelectContent>
+          </Select>
           {errorText("kategori")}
         </div>
 
@@ -205,33 +268,28 @@ export default function FormLaporan() {
           <label htmlFor="lokasi" className="mb-1.5 block text-sm font-medium">
             {tema.labelLokasi}
           </label>
-          <div className="relative">
-            <select
+          <Select
+            value={form.lokasi}
+            onValueChange={(val) => {
+              setForm((prev) => ({ ...prev, lokasi: val }));
+              if (errors.lokasi)
+                setErrors((prev) => ({ ...prev, lokasi: undefined }));
+            }}
+          >
+            <SelectTrigger
               id="lokasi"
-              name="lokasi"
-              value={form.lokasi}
-              onChange={handleChange}
-              className={`${inputBase} ${tema.ring} appearance-none pr-9 ${
-                form.lokasi ? "" : "text-gray-400"
-              }`}
+              className="h-11 w-full rounded-md border-0 bg-[#ebebeb] px-3.5 text-sm text-gray-900"
             >
-              <option value="" disabled>
-                Pilih lokasi kampus
-              </option>
+              <SelectValue placeholder="Pilih lokasi kampus" />
+            </SelectTrigger>
+            <SelectContent>
               {LOKASI.map((loc) => (
-                <option key={loc} value={loc} className="text-gray-900">
+                <SelectItem key={loc} value={loc}>
                   {loc}
-                </option>
+                </SelectItem>
               ))}
-            </select>
-            <svg
-              className="pointer-events-none absolute right-3 top-1/2 h-3 w-3 -translate-y-1/2 text-gray-900"
-              viewBox="0 0 10 6"
-              fill="currentColor"
-            >
-              <path d="M0 0l5 6 5-6z" />
-            </svg>
-          </div>
+            </SelectContent>
+          </Select>
           {errorText("lokasi")}
         </div>
 
@@ -240,14 +298,14 @@ export default function FormLaporan() {
           <label htmlFor="tanggal" className="mb-1.5 block text-sm font-medium">
             {tema.labelTanggal}
           </label>
-          <input
+          <Input
             id="tanggal"
             name="tanggal"
             type="date"
             max={new Date().toISOString().split("T")[0]}
             value={form.tanggal}
             onChange={handleChange}
-            className={`${inputBase} ${tema.ring} ${
+            className={`h-11 rounded-md border-0 bg-[#ebebeb] px-3.5 text-sm text-gray-900 ${
               form.tanggal ? "" : "text-gray-400"
             }`}
           />
@@ -259,14 +317,14 @@ export default function FormLaporan() {
           <label htmlFor="deskripsi" className="mb-1.5 block text-sm font-medium">
             Deskripsi
           </label>
-          <textarea
+          <Textarea
             id="deskripsi"
             name="deskripsi"
             rows={4}
             value={form.deskripsi}
             onChange={handleChange}
             placeholder={tema.placeholderDeskripsi}
-            className={`${inputBase} ${tema.ring} resize-none`}
+            className="min-h-[110px] resize-none rounded-md border-0 bg-[#ebebeb] px-3.5 py-3 text-sm text-gray-900"
           />
           {errorText("deskripsi")}
         </div>
@@ -283,7 +341,11 @@ export default function FormLaporan() {
           disabled={loading}
           className={`w-full rounded-md py-3 text-xs font-semibold text-white shadow disabled:opacity-60 ${tema.tombol}`}
         >
-          {loading ? "Mengirim..." : "Kirim laporan"}
+          {loading
+            ? "Menyimpan..."
+            : isEditMode
+              ? "Simpan perubahan"
+              : "Kirim laporan"}
         </button>
       </form>
     </div>

@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { postService } from '../services/postService'
 
@@ -15,28 +15,43 @@ export function usePostsQuery(filters) {
   return useQuery({
     queryKey: postKeys.list(filters),
     queryFn: () => postService.getPosts(filters),
+    placeholderData: keepPreviousData,
   })
 }
 
-export function usePostDetailQuery(id) {
+export function usePostDetailQuery(id, initialPost = null) {
+  const queryClient = useQueryClient()
   return useQuery({
     queryKey: postKeys.detail(id),
     queryFn: () => postService.getPostById(id),
     enabled: Boolean(id),
+    initialData: () => {
+      if (initialPost) return initialPost
+      const listQueries = queryClient.getQueriesData({ queryKey: ['posts'] })
+      for (const [, list] of listQueries) {
+        if (Array.isArray(list)) {
+          const found = list.find((p) => String(p.id) === String(id))
+          if (found) return found
+        }
+      }
+      return undefined
+    },
   })
 }
 
-export function useMyPostsQuery() {
+export function useMyPostsQuery(enabled = true) {
   return useQuery({
     queryKey: postKeys.mine,
     queryFn: () => postService.getMyPosts(),
+    enabled,
   })
 }
 
-export function useSavedPostsQuery() {
+export function useSavedPostsQuery(enabled = true) {
   return useQuery({
     queryKey: postKeys.saved,
     queryFn: () => postService.getSavedPosts(),
+    enabled,
   })
 }
 
@@ -51,13 +66,17 @@ export function useUserOpenPostsQuery(userId) {
 export function useCreatePostMutation() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (formData) => postService.createPost(formData),
+    mutationFn: (formData) => {
+      const promise = postService.createPost(formData)
+      toast.promise(promise, {
+        loading: 'Mempublikasikan laporan...',
+        success: 'Laporan berhasil dipublikasikan!',
+        error: (err) => err?.message || 'Gagal mengirim laporan.',
+      })
+      return promise
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: postKeys.all })
-      toast.success('Laporan berhasil dipublikasikan!')
-    },
-    onError: (err) => {
-      toast.error(err.message || 'Gagal mengirim laporan.')
     },
   })
 }
@@ -65,17 +84,52 @@ export function useCreatePostMutation() {
 export function useToggleBookmarkMutation() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (id) => postService.toggleBookmark(id),
-    onSuccess: (updated) => {
-      queryClient.invalidateQueries({ queryKey: postKeys.all })
-      if (updated?.isSaved) {
-        toast.success('Laporan disimpan ke profil.')
-      } else {
-        toast.success('Laporan dihapus dari simpanan.')
-      }
+    mutationFn: (id) => {
+      const promise = postService.toggleBookmark(id)
+      toast.promise(promise, {
+        loading: 'Memperbarui simpanan...',
+        success: (updated) =>
+          updated?.isSaved
+            ? 'Laporan disimpan ke profil.'
+            : 'Laporan dihapus dari simpanan.',
+        error: (err) => err?.message || 'Gagal memperbarui simpanan.',
+      })
+      return promise
     },
-    onError: (err) => {
-      toast.error(err.message || 'Gagal memperbarui simpanan.')
+    onMutate: async (id) => {
+      await queryClient.cancelQueries({ queryKey: postKeys.all })
+      const toggleInList = (old) =>
+        Array.isArray(old)
+          ? old.map((p) =>
+              String(p.id) === String(id) ? { ...p, isSaved: !p.isSaved } : p
+            )
+          : old
+      queryClient.setQueriesData({ queryKey: ['posts', 'list'] }, toggleInList)
+      queryClient.setQueriesData({ queryKey: postKeys.mine }, toggleInList)
+      queryClient.setQueryData(postKeys.detail(id), (old) =>
+        old ? { ...old, isSaved: !old.isSaved } : old
+      )
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: postKeys.all })
+    },
+  })
+}
+
+export function useUpdatePostMutation() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, payload }) => {
+      const promise = postService.updatePost(id, payload)
+      toast.promise(promise, {
+        loading: 'Menyimpan perubahan laporan...',
+        success: 'Laporan berhasil diperbarui!',
+        error: (err) => err?.message || 'Gagal memperbarui laporan.',
+      })
+      return promise
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: postKeys.all })
     },
   })
 }
@@ -83,17 +137,32 @@ export function useToggleBookmarkMutation() {
 export function useUpdatePostStatusMutation() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: ({ id, status }) => postService.updatePostStatus(id, status),
-    onSuccess: (updated) => {
-      queryClient.invalidateQueries({ queryKey: postKeys.all })
-      toast.success(
-        updated?.status === 'selesai'
-          ? 'Laporan ditandai selesai.'
-          : 'Laporan dibuka kembali.'
+    mutationFn: ({ id, status }) => {
+      const promise = postService.updatePostStatus(id, status)
+      toast.promise(promise, {
+        loading: 'Memperbarui status laporan...',
+        success: (updated) =>
+          updated?.status === 'selesai'
+            ? 'Laporan ditandai selesai.'
+            : 'Laporan dibuka kembali.',
+        error: (err) => err?.message || 'Gagal memperbarui status laporan.',
+      })
+      return promise
+    },
+    onMutate: async ({ id, status }) => {
+      await queryClient.cancelQueries({ queryKey: postKeys.all })
+      const updateInList = (old) =>
+        Array.isArray(old)
+          ? old.map((p) => (String(p.id) === String(id) ? { ...p, status } : p))
+          : old
+      queryClient.setQueriesData({ queryKey: ['posts', 'list'] }, updateInList)
+      queryClient.setQueriesData({ queryKey: postKeys.mine }, updateInList)
+      queryClient.setQueryData(postKeys.detail(id), (old) =>
+        old ? { ...old, status } : old
       )
     },
-    onError: (err) => {
-      toast.error(err.message || 'Gagal memperbarui status laporan.')
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: postKeys.all })
     },
   })
 }
@@ -101,13 +170,26 @@ export function useUpdatePostStatusMutation() {
 export function useDeletePostMutation() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (id) => postService.deletePost(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: postKeys.all })
-      toast.success('Laporan berhasil dihapus.')
+    mutationFn: (id) => {
+      const promise = postService.deletePost(id)
+      toast.promise(promise, {
+        loading: 'Menghapus laporan...',
+        success: 'Laporan berhasil dihapus.',
+        error: (err) => err?.message || 'Gagal menghapus laporan.',
+      })
+      return promise
     },
-    onError: (err) => {
-      toast.error(err.message || 'Gagal menghapus laporan.')
+    onMutate: async (id) => {
+      await queryClient.cancelQueries({ queryKey: postKeys.all })
+      const removeInList = (old) =>
+        Array.isArray(old)
+          ? old.filter((p) => String(p.id) !== String(id))
+          : old
+      queryClient.setQueriesData({ queryKey: ['posts', 'list'] }, removeInList)
+      queryClient.setQueriesData({ queryKey: postKeys.mine }, removeInList)
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: postKeys.all })
     },
   })
 }

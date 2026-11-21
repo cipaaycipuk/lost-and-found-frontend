@@ -1,5 +1,18 @@
 import { useState } from 'react'
-import { TriangleAlert, ChevronDown, ChevronUp, RotateCcw } from 'lucide-react'
+import {
+  TriangleAlert,
+  ChevronDown,
+  ChevronUp,
+  RotateCcw,
+  SlidersHorizontal,
+} from 'lucide-react'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 
 const CATEGORIES = [
   'Semua kategori',
@@ -33,17 +46,55 @@ export default function FilterSidebar({
   onReset,
 }) {
   const [showMoreGuide, setShowMoreGuide] = useState(false)
+  const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false)
 
-  const hasActiveFilters =
-    activeTab !== 'Semua' ||
-    category !== 'Semua kategori' ||
-    location !== 'Semua' ||
-    sortBy !== 'Terbaru'
+  const activeFilterCount =
+    (activeTab !== 'Semua' ? 1 : 0) +
+    (category !== 'Semua kategori' ? 1 : 0) +
+    (location !== 'Semua' ? 1 : 0) +
+    (sortBy !== 'Terbaru' ? 1 : 0)
+
+  const hasActiveFilters = activeFilterCount > 0
 
   return (
-    <aside className="space-y-5 lg:sticky lg:top-24 lg:col-span-4">
+    <aside className="space-y-4 lg:sticky lg:top-24 lg:col-span-4 lg:space-y-5">
+      {/* Toggle Filter Mobile-First */}
+      <div className="flex items-center justify-between gap-2 lg:hidden">
+        <button
+          type="button"
+          onClick={() => setIsMobileFilterOpen((prev) => !prev)}
+          aria-expanded={isMobileFilterOpen}
+          className="inline-flex flex-1 items-center justify-between rounded-xl border border-gray-200 bg-white px-4 py-3 text-xs font-semibold text-gray-800 shadow-sm transition hover:bg-gray-50"
+        >
+          <span className="inline-flex items-center gap-2">
+            <SlidersHorizontal size={15} />
+            Filter &amp; Urutkan
+            {activeFilterCount > 0 && (
+              <span className="rounded-full bg-[#e0531c] px-2 py-0.5 text-[11px] font-bold text-white tabular-nums">
+                {activeFilterCount}
+              </span>
+            )}
+          </span>
+          {isMobileFilterOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+        </button>
+
+        {hasActiveFilters && (
+          <button
+            type="button"
+            onClick={onReset}
+            className="rounded-xl border border-gray-200 bg-white px-3.5 py-3 text-xs font-semibold text-gray-600 shadow-sm transition hover:text-black"
+          >
+            Reset
+          </button>
+        )}
+      </div>
+
       {/* Box Filter */}
-      <div className="space-y-4 rounded-xl border border-gray-200/80 bg-white p-5 shadow-sm">
+      <div
+        className={`${
+          isMobileFilterOpen ? 'block' : 'hidden'
+        } space-y-4 rounded-xl border border-gray-200/80 bg-white p-4 shadow-sm sm:p-5 lg:block`}
+      >
         <div>
           <label className="mb-2 block text-xs font-semibold text-gray-600">
             Jenis Laporan
@@ -74,18 +125,21 @@ export default function FilterSidebar({
           >
             Kategori
           </label>
-          <select
-            id="filter-category"
-            value={category}
-            onChange={(e) => setCategory(e.target.value)}
-            className="w-full rounded-lg border border-gray-200 bg-gray-50/50 px-3 py-2 text-xs text-gray-800 outline-none transition focus:border-black focus:bg-white"
-          >
-            {CATEGORIES.map((item) => (
-              <option key={item} value={item}>
-                {item}
-              </option>
-            ))}
-          </select>
+          <Select value={category} onValueChange={setCategory}>
+            <SelectTrigger
+              id="filter-category"
+              className="h-9 w-full rounded-lg border-0 bg-[#EFEFEF] text-xs text-gray-800"
+            >
+              <SelectValue placeholder="Pilih kategori" />
+            </SelectTrigger>
+            <SelectContent>
+              {CATEGORIES.map((item) => (
+                <SelectItem key={item} value={item} className="text-xs">
+                  {item}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
 
         <div>
@@ -95,18 +149,21 @@ export default function FilterSidebar({
           >
             Lokasi
           </label>
-          <select
-            id="filter-location"
-            value={location}
-            onChange={(e) => setLocation(e.target.value)}
-            className="w-full rounded-lg border border-gray-200 bg-gray-50/50 px-3 py-2 text-xs text-gray-800 outline-none transition focus:border-black focus:bg-white"
-          >
-            {LOCATIONS.map((loc) => (
-              <option key={loc} value={loc}>
-                {loc}
-              </option>
-            ))}
-          </select>
+          <Select value={location} onValueChange={setLocation}>
+            <SelectTrigger
+              id="filter-location"
+              className="h-9 w-full rounded-lg border-0 bg-[#EFEFEF] text-xs text-gray-800"
+            >
+              <SelectValue placeholder="Pilih lokasi" />
+            </SelectTrigger>
+            <SelectContent>
+              {LOCATIONS.map((loc) => (
+                <SelectItem key={loc} value={loc} className="text-xs">
+                  {loc}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
 
         <div>
@@ -116,15 +173,22 @@ export default function FilterSidebar({
           >
             Urutkan berdasarkan
           </label>
-          <select
-            id="filter-sort"
-            value={sortBy}
-            onChange={(e) => setSortBy(e.target.value)}
-            className="w-full rounded-lg border border-gray-200 bg-gray-50/50 px-3 py-2 text-xs text-gray-800 outline-none transition focus:border-black focus:bg-white"
-          >
-            <option value="Terbaru">Terbaru</option>
-            <option value="Terlama">Terlama</option>
-          </select>
+          <Select value={sortBy} onValueChange={setSortBy}>
+            <SelectTrigger
+              id="filter-sort"
+              className="h-9 w-full rounded-lg border-0 bg-[#EFEFEF] text-xs text-gray-800"
+            >
+              <SelectValue placeholder="Urutkan" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="Terbaru" className="text-xs">
+                Terbaru
+              </SelectItem>
+              <SelectItem value="Terlama" className="text-xs">
+                Terlama
+              </SelectItem>
+            </SelectContent>
+          </Select>
         </div>
 
         {hasActiveFilters && (
@@ -139,8 +203,12 @@ export default function FilterSidebar({
         )}
       </div>
 
-      {/* Panduan Keamanan */}
-      <div className="space-y-3 rounded-xl border border-gray-200/80 bg-white p-5 shadow-sm">
+      {/* Panduan Keamanan (sembunyikan di mobile kecuali filter dibuka agar feed langsung terlihat) */}
+      <div
+        className={`${
+          isMobileFilterOpen ? 'block' : 'hidden'
+        } space-y-3 rounded-xl border border-gray-200/80 bg-white p-4 shadow-sm sm:p-5 lg:block`}
+      >
         <div className="flex items-center gap-2 text-sm font-semibold leading-tight text-black">
           <TriangleAlert size={18} className="shrink-0 text-amber-600" />
           <span>Panduan Singkat Keamanan</span>

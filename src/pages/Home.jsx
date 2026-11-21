@@ -1,14 +1,14 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { AlertCircle, PackageSearch, Plus, RefreshCw } from 'lucide-react'
 import FilterSidebar from '../components/FilterSidebar'
 import PostCard from '../components/PostCard'
 import PostDetail from '../components/PostDetail'
-import { usePostsQuery } from '../hooks/usePosts'
+import { usePostDetailQuery, usePostsQuery } from '../hooks/usePosts'
 
 function PostSkeleton() {
   return (
-    <div className="animate-pulse space-y-4 rounded-xl border border-gray-200 bg-white p-5">
+    <div className="animate-pulse space-y-4 rounded-xl border border-gray-200 bg-white p-4 sm:p-5">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="h-11 w-11 rounded-full bg-gray-200" />
@@ -32,18 +32,40 @@ function PostSkeleton() {
 export default function Home() {
   const [searchParams, setSearchParams] = useSearchParams()
   const searchQuery = searchParams.get('q') || ''
+  const postParam = searchParams.get('post')
 
   const [activeTab, setActiveTab] = useState('Semua')
   const [category, setCategory] = useState('Semua kategori')
   const [location, setLocation] = useState('Semua')
   const [sortBy, setSortBy] = useState('Terbaru')
-  const [selectedPostId, setSelectedPostId] = useState(null)
+  const [selectedPost, setSelectedPost] = useState(null)
+
+  const { data: notifPostDetail } = usePostDetailQuery(postParam)
+
+  useEffect(() => {
+    if (!selectedPost) return undefined
+    const onKeyDown = (e) => {
+      if (e.key === 'Escape') setSelectedPost(null)
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [selectedPost])
+
+  const handleCloseModal = () => {
+    setSelectedPost(null)
+    if (searchParams.has('post')) {
+      const next = new URLSearchParams(searchParams)
+      next.delete('post')
+      setSearchParams(next, { replace: true })
+    }
+  }
 
   const filters = useMemo(
     () => ({
       type: activeTab,
       category,
       location,
+      status: 'open',
       sort: sortBy === 'Terlama' ? 'oldest' : 'latest',
       search: searchQuery,
     }),
@@ -51,17 +73,35 @@ export default function Home() {
   )
 
   const {
-    data: posts = [],
+    data: rawPosts = [],
     isLoading,
     isError,
     error,
     refetch,
   } = usePostsQuery(filters)
 
-  const selectedPost = useMemo(
-    () => posts.find((p) => p.id === selectedPostId) || null,
-    [posts, selectedPostId]
+  // Postingan dengan status selesai disembunyikan di beranda
+  const posts = useMemo(
+    () => rawPosts.filter((p) => p.status !== 'selesai'),
+    [rawPosts]
   )
+
+  const activeModalPost = useMemo(() => {
+    if (selectedPost) {
+      return (
+        rawPosts.find((p) => String(p.id) === String(selectedPost.id)) ||
+        selectedPost
+      )
+    }
+    if (postParam) {
+      return (
+        rawPosts.find((p) => String(p.id) === String(postParam)) ||
+        notifPostDetail ||
+        null
+      )
+    }
+    return null
+  }, [selectedPost, postParam, rawPosts, notifPostDetail])
 
   const handleResetFilter = () => {
     setActiveTab('Semua')
@@ -76,8 +116,8 @@ export default function Home() {
   }
 
   return (
-    <div className="mx-auto max-w-7xl px-4 pb-12 pt-8 lg:px-8">
-      <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-12">
+    <div className="mx-auto max-w-7xl px-4 pb-12 pt-5 sm:pt-8 lg:px-8">
+      <div className="grid grid-cols-1 items-start gap-5 lg:grid-cols-12 lg:gap-6">
         {/* Sidebar Filter */}
         <FilterSidebar
           activeTab={activeTab}
@@ -93,12 +133,7 @@ export default function Home() {
 
         {/* Feed Postingan */}
         <main className="space-y-4 lg:col-span-8">
-          {selectedPost ? (
-            <PostDetail
-              post={selectedPost}
-              onBack={() => setSelectedPostId(null)}
-            />
-          ) : isLoading ? (
+          {isLoading ? (
             <div className="space-y-4">
               <PostSkeleton />
               <PostSkeleton />
@@ -157,7 +192,7 @@ export default function Home() {
                   <span className="font-semibold text-gray-900 tabular-nums">
                     {posts.length}
                   </span>{' '}
-                  laporan
+                  laporan aktif
                   {searchQuery ? ` untuk "${searchQuery}"` : ''}
                 </p>
               </div>
@@ -167,7 +202,7 @@ export default function Home() {
                   <PostCard
                     key={post.id}
                     post={post}
-                    onSelect={(p) => setSelectedPostId(p.id)}
+                    onSelect={(p) => setSelectedPost(p)}
                   />
                 ))}
               </div>
@@ -175,6 +210,21 @@ export default function Home() {
           )}
         </main>
       </div>
+
+      {/* Modal Detail Postingan */}
+      {activeModalPost && (
+        <div
+          className="no-scrollbar fixed inset-0 z-50 overflow-y-auto overscroll-contain bg-black/70 px-3 py-6 backdrop-blur-[2px] sm:px-6 sm:py-10"
+          onClick={handleCloseModal}
+        >
+          <div
+            className="mx-auto max-w-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <PostDetail post={activeModalPost} onBack={handleCloseModal} />
+          </div>
+        </div>
+      )}
     </div>
   )
 }

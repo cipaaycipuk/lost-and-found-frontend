@@ -1,6 +1,13 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { Bell, Plus, Search, User, X, CheckCheck } from 'lucide-react'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
+import { Input } from '@/components/ui/input'
 import { useAuth } from '../context/AuthContext'
 import { resolveMediaUrl } from '../lib/formatters'
 import {
@@ -14,8 +21,6 @@ export default function Navbar() {
   const location = useLocation()
   const [searchParams, setSearchParams] = useSearchParams()
   const [searchQuery, setSearchQuery] = useState(searchParams.get('q') || '')
-  const [isNotifOpen, setIsNotifOpen] = useState(false)
-  const notifRef = useRef(null)
 
   const { user, isAuthenticated } = useAuth()
   const { data: notifications = [] } = useNotificationsQuery()
@@ -27,16 +32,6 @@ export default function Navbar() {
   useEffect(() => {
     setSearchQuery(searchParams.get('q') || '')
   }, [searchParams])
-
-  useEffect(() => {
-    const handleClickOutside = (e) => {
-      if (notifRef.current && !notifRef.current.contains(e.target)) {
-        setIsNotifOpen(false)
-      }
-    }
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [])
 
   const applySearch = (value) => {
     setSearchQuery(value)
@@ -70,15 +65,15 @@ export default function Navbar() {
             />
           </Link>
 
-          <div className="flex w-full max-w-sm items-center rounded-full bg-white/15 px-3.5 py-2 text-sm text-white transition focus-within:bg-white/20 lg:max-w-md">
-            <Search className="mr-2.5 h-4 w-4 shrink-0 text-gray-300" />
-            <input
+          <div className="flex w-full max-w-sm items-center rounded-full bg-white/15 px-3.5 py-1 text-sm text-white transition focus-within:bg-white/20 lg:max-w-md">
+            <Search className="mr-2 h-4 w-4 shrink-0 text-gray-300" />
+            <Input
               type="search"
               aria-label="Cari barang hilang atau ditemukan"
               placeholder="Cari barang hilang atau ditemukan..."
               value={searchQuery}
               onChange={(e) => applySearch(e.target.value)}
-              className="w-full bg-transparent text-sm text-white placeholder-gray-300 outline-none"
+              className="h-8 w-full border-0 bg-transparent px-0 text-sm text-white placeholder:text-gray-300 focus-visible:ring-0"
             />
             {searchQuery && (
               <button
@@ -104,68 +99,69 @@ export default function Navbar() {
             <span className="sm:hidden">Lapor</span>
           </Link>
 
-          {/* Notifikasi */}
-          <div className="relative" ref={notifRef}>
-            <button
-              type="button"
+          {/* Notifikasi (shadcn DropdownMenu) */}
+          <DropdownMenu>
+            <DropdownMenuTrigger
               aria-label="Notifikasi"
-              aria-expanded={isNotifOpen}
-              onClick={() => setIsNotifOpen((prev) => !prev)}
-              className="relative rounded-full p-2 text-gray-300 transition hover:bg-white/10 hover:text-white"
+              className="relative rounded-full p-2 text-gray-300 outline-none transition hover:bg-white/10 hover:text-white"
             >
               <Bell className="h-5 w-5" />
               {unreadCount > 0 && (
                 <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-[#e0531c]" />
               )}
-            </button>
+            </DropdownMenuTrigger>
 
-            {isNotifOpen && (
-              <div className="absolute right-0 mt-3 w-80 overflow-hidden rounded-2xl border border-gray-200 bg-white text-gray-900 shadow-xl">
-                <div className="flex items-center justify-between border-b border-gray-100 px-4 py-3">
-                  <span className="text-sm font-semibold">Notifikasi</span>
-                  {unreadCount > 0 && (
-                    <button
-                      type="button"
-                      onClick={() => markAllRead.mutate()}
-                      className="inline-flex items-center gap-1 text-xs font-medium text-[#e0531c] hover:underline"
-                    >
-                      <CheckCheck className="h-3.5 w-3.5" />
-                      Tandai dibaca
-                    </button>
-                  )}
-                </div>
-                <div className="max-h-72 divide-y divide-gray-100 overflow-y-auto">
-                  {notifications.length === 0 ? (
-                    <p className="px-4 py-8 text-center text-xs text-gray-500">
-                      Belum ada notifikasi.
-                    </p>
-                  ) : (
-                    notifications.map((notif) => (
-                      <button
-                        key={notif.id}
-                        type="button"
-                        onClick={() => {
-                          if (!notif.isRead) markRead.mutate(notif.id)
-                          setIsNotifOpen(false)
-                          navigate('/')
-                        }}
-                        className={`w-full px-4 py-3 text-left transition hover:bg-gray-50 ${
-                          notif.isRead ? 'bg-white' : 'bg-orange-50/50'
-                        }`}
-                      >
-                        <p className="text-xs leading-relaxed text-gray-800">
-                          {notif.message}
-                        </p>
-                        <span className="mt-1 block text-[11px] text-gray-400">
-                          {notif.timeAgo}
-                        </span>
-                      </button>
-                    ))
-                  )}
-                </div>
+            <DropdownMenuContent
+              align="end"
+              sideOffset={12}
+              className="w-[calc(100vw-2rem)] overflow-hidden rounded-2xl border border-gray-200 bg-white p-0 text-gray-900 shadow-xl sm:w-80"
+            >
+              <div className="flex items-center justify-between border-b border-gray-100 px-4 py-3">
+                <span className="text-sm font-semibold">Notifikasi</span>
+                {unreadCount > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => markAllRead.mutate()}
+                    className="inline-flex items-center gap-1 text-xs font-medium text-[#e0531c] hover:underline"
+                  >
+                    <CheckCheck className="h-3.5 w-3.5" />
+                    Tandai dibaca
+                  </button>
+                )}
               </div>
-            )}
-          </div>
+              <div className="max-h-72 divide-y divide-gray-100 overflow-y-auto">
+                {notifications.length === 0 ? (
+                  <p className="px-4 py-8 text-center text-xs text-gray-500">
+                    Belum ada notifikasi.
+                  </p>
+                ) : (
+                  notifications.map((notif) => (
+                    <DropdownMenuItem
+                      key={notif.id}
+                      onClick={() => {
+                        if (!notif.isRead) markRead.mutate(notif.id)
+                        const targetPostId = notif.postId ?? notif.post_id
+                        const targetUrl = targetPostId
+                          ? `/?post=${targetPostId}`
+                          : notif.url || '/'
+                        navigate(targetUrl)
+                      }}
+                      className={`block w-full cursor-pointer rounded-none px-4 py-3 text-left transition ${
+                        notif.isRead ? 'bg-white' : 'bg-orange-50/50'
+                      }`}
+                    >
+                      <p className="text-xs leading-relaxed text-gray-800">
+                        {notif.message}
+                      </p>
+                      <span className="mt-1 block text-[11px] text-gray-400">
+                        {notif.timeAgo}
+                      </span>
+                    </DropdownMenuItem>
+                  ))
+                )}
+              </div>
+            </DropdownMenuContent>
+          </DropdownMenu>
 
           {/* Profil / Login */}
           <Link

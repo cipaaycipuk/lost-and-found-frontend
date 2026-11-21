@@ -1,3 +1,6 @@
+import { Input } from '@/components/ui/input'
+import { cn } from '@/lib/utils'
+
 export default function TextField({
   label,
   name,
@@ -10,13 +13,13 @@ export default function TextField({
   inputMode,
 }) {
   return (
-    <div className="space-y-1">
+    <div className="space-y-1.5">
       {label && (
         <label htmlFor={name} className="block text-sm font-medium text-gray-700">
           {label}
         </label>
       )}
-      <input
+      <Input
         id={name}
         name={name}
         type={type}
@@ -25,11 +28,11 @@ export default function TextField({
         placeholder={placeholder}
         autoComplete={autoComplete}
         inputMode={inputMode}
-        className={`w-full rounded-lg border px-3 py-2.5 text-sm outline-none transition focus:ring-2 ${
-          error
-            ? 'border-red-500 focus:border-red-500 focus:ring-red-100'
-            : 'border-gray-300 focus:border-black focus:ring-gray-200'
-        }`}
+        aria-invalid={Boolean(error)}
+        className={cn(
+          'h-11 rounded-lg border-0 bg-[#EFEFEF] px-3.5 text-sm focus:bg-[#E6E6E6]',
+          error ? 'bg-red-50/80 text-red-900 placeholder:text-red-400' : ''
+        )}
       />
       {error && <p className="text-xs text-red-500">{error}</p>}
     </div>

@@ -2,7 +2,7 @@ import apiClient, { API_BASE_URL, USE_MOCK } from '../lib/axios'
 import { currentUser } from '../lib/dummyData'
 import { EMAIL_DOMAIN } from '../lib/validators'
 
-const delay = (ms = 350) => new Promise((resolve) => setTimeout(resolve, ms))
+const delay = (ms = 0) => new Promise((resolve) => setTimeout(resolve, ms))
 
 const assertWidyatamaEmail = (email) => {
   const normalized = String(email || '').trim().toLowerCase()

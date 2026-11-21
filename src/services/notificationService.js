@@ -2,15 +2,23 @@ import apiClient, { USE_MOCK } from '../lib/axios'
 import { INITIAL_NOTIFICATIONS } from '../lib/dummyData'
 import { formatTimeAgo } from '../lib/formatters'
 
-const delay = (ms = 200) => new Promise((resolve) => setTimeout(resolve, ms))
+const delay = (ms = 0) => new Promise((resolve) => setTimeout(resolve, ms))
 
 let mockNotifications = [...INITIAL_NOTIFICATIONS]
+
+const extractPostId = (n) => {
+  const direct = n.post_id ?? n.postId ?? n.data?.post_id ?? n.data?.postId
+  if (direct) return direct
+  const urlMatch = String(n.url || n.link || '').match(/\/posts\/(\d+)/)
+  return urlMatch ? urlMatch[1] : null
+}
 
 const normalizeNotification = (n) => ({
   id: n.id,
   type: n.type || 'info',
-  postId: n.post_id ?? n.postId ?? null,
-  message: n.message || n.title || '',
+  postId: extractPostId(n),
+  url: n.url || n.link || null,
+  message: n.message || n.title || n.data?.message || '',
   timeAgo: n.timeAgo || n.time_ago || formatTimeAgo(n.created_at),
   isRead: Boolean(n.is_read ?? n.isRead ?? n.read_at),
 })

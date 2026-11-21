@@ -1,7 +1,7 @@
 import apiClient, { USE_MOCK } from '../lib/axios'
 import { INITIAL_COMMENTS, currentUser } from '../lib/dummyData'
 
-const delay = (ms = 220) => new Promise((resolve) => setTimeout(resolve, ms))
+const delay = (ms = 0) => new Promise((resolve) => setTimeout(resolve, ms))
 
 const mockCommentsStore = { ...INITIAL_COMMENTS }
 
@@ -29,17 +29,25 @@ const normalizeComment = (c) => ({
 const flattenComments = (list) => {
   if (!Array.isArray(list)) return []
   const result = []
+  const seenIds = new Set()
+
+  const pushUnique = (comment) => {
+    const normalized = normalizeComment(comment)
+    const key = String(normalized.id)
+    if (seenIds.has(key)) return
+    seenIds.add(key)
+    result.push(normalized)
+  }
+
   list.forEach((item) => {
-    result.push(normalizeComment(item))
+    pushUnique(item)
     if (Array.isArray(item.replies)) {
       item.replies.forEach((reply) => {
-        result.push(
-          normalizeComment({
-            ...reply,
-            parent_id: reply.parent_id ?? item.id,
-            isReply: true,
-          })
-        )
+        pushUnique({
+          ...reply,
+          parent_id: reply.parent_id ?? item.id,
+          isReply: true,
+        })
       })
     }
   })

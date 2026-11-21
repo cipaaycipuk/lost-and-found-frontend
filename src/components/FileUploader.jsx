@@ -1,35 +1,47 @@
 import { X } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 
-// Satu thumbnail. URL preview dibuat & dibersihkan di sini supaya aman
-// dari bug revokeObjectURL (termasuk di React StrictMode).
+// Satu thumbnail. Mendukung objek File baru maupun string URL gambar lama (saat Edit Laporan).
 function Thumb({ file, onRemove, onClick }) {
-  const [url, setUrl] = useState(null);
+  const [url, setUrl] = useState(() => (typeof file === "string" ? file : null));
 
   useEffect(() => {
+    if (typeof file === "string") {
+      setUrl(file);
+      return undefined;
+    }
     const u = URL.createObjectURL(file);
     setUrl(u);
     return () => URL.revokeObjectURL(u);
   }, [file]);
 
+  const label = typeof file === "string" ? "Foto laporan" : file.name;
+
   return (
-    <li className="group relative aspect-square overflow-hidden rounded-md bg-gray-200 shadow-sm hover:scale-105 transition-all duration-300 cursor-pointer" onClick={() => onClick(file)}>
+    <li
+      className="group relative aspect-square cursor-pointer overflow-hidden rounded-md bg-gray-200 shadow-sm transition-all duration-300 hover:scale-105"
+      onClick={() => onClick(file)}
+    >
       {url && (
-        <img src={url} alt={file.name} className="h-full w-full object-cover" />
+        <img src={url} alt={label} className="h-full w-full object-cover" />
       )}
       <button
         type="button"
-        onClick={onRemove}
-        aria-label={`Hapus ${file.name}`}
+        onClick={(e) => {
+          e.stopPropagation();
+          onRemove();
+        }}
+        aria-label={`Hapus ${label}`}
         className="absolute right-1 top-1 flex h-6 w-6 items-center justify-center rounded-full bg-black/60 text-sm leading-none text-white hover:bg-black/80"
       >
-       X
+        X
       </button>
     </li>
   );
 }
 
-const kunci = (f) => `${f.name}-${f.size}-${f.lastModified}`;
+const kunci = (f) =>
+  typeof f === "string" ? f : `${f.name}-${f.size}-${f.lastModified}`;
 
 export default function FileUploader({
   value = [],
@@ -199,7 +211,12 @@ export default function FileUploader({
 
           {/* Full Image */}
           <img
-            src={URL.createObjectURL(currentFoto)} alt={currentFoto.name}
+            src={
+              typeof currentFoto === "string"
+                ? currentFoto
+                : URL.createObjectURL(currentFoto)
+            }
+            alt={typeof currentFoto === "string" ? "Foto laporan" : currentFoto.name}
             className="max-h-[90vh] max-w-[95vw] rounded-md object-contain"
           />
         </div>

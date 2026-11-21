@@ -24,13 +24,17 @@ body,
   color: #c84615;
 }
 
-*:focus-visible {
-  outline: 2px solid #171717;
-  outline-offset: 2px;
-}
-
 .tabular-nums {
   font-variant-numeric: tabular-nums;
+}
+
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
 }
 
 @theme inline {

@@ -60,18 +60,23 @@ export default function GoogleAuthButton({ label = 'Continue with Google' }) {
           // Jika fetch userinfo gagal, biarkan backend memvalidasi access_token
         }
 
-        const data = await loginWithGoogle({
+        const promise = loginWithGoogle({
           access_token: tokenResponse.access_token,
         })
-        toast.success('Login dengan Google berhasil!')
+        toast.promise(promise, {
+          loading: 'Memverifikasi akun Google...',
+          success: 'Login dengan Google berhasil!',
+          error: (err) => err?.message || 'Gagal verifikasi token Google di server.',
+        })
+        const data = await promise
         if (!String(data?.user?.whatsapp || '').trim()) {
           toast.info('Lengkapi nomor WhatsApp Anda terlebih dahulu.')
           navigate('/profile')
         } else {
           navigate('/')
         }
-      } catch (err) {
-        toast.error(err.message || 'Gagal verifikasi token Google di server.')
+      } catch {
+        // Handled by toast.promise
       } finally {
         setLoading(false)
       }
@@ -98,19 +103,24 @@ export default function GoogleAuthButton({ label = 'Continue with Google' }) {
         // Abaikan error decode, biarkan backend memvalidasi JWT
       }
 
-      const data = await loginWithGoogle({
+      const promise = loginWithGoogle({
         credential: credentialResponse.credential,
         id_token: credentialResponse.credential,
       })
-      toast.success('Login dengan Google berhasil!')
+      toast.promise(promise, {
+        loading: 'Memverifikasi akun Google...',
+        success: 'Login dengan Google berhasil!',
+        error: (err) => err?.message || 'Gagal verifikasi Google Credential di server.',
+      })
+      const data = await promise
       if (!String(data?.user?.whatsapp || '').trim()) {
         toast.info('Lengkapi nomor WhatsApp Anda terlebih dahulu.')
         navigate('/profile')
       } else {
         navigate('/')
       }
-    } catch (err) {
-      toast.error(err.message || 'Gagal verifikasi Google Credential di server.')
+    } catch {
+      // Handled by toast.promise
     } finally {
       setLoading(false)
     }

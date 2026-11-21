@@ -63,8 +63,14 @@ export default function Login() {
 
     try {
       setIsSubmitting(true)
-      const data = await login(values)
-      toast.success('Login berhasil!')
+      const promise = login(values)
+      toast.promise(promise, {
+        loading: 'Memverifikasi akun...',
+        success: 'Login berhasil!',
+        error: (err) =>
+          err?.message || 'Gagal masuk. Periksa kembali email dan password.',
+      })
+      const data = await promise
       if (!String(data?.user?.whatsapp || '').trim()) {
         toast.info('Lengkapi nomor WhatsApp Anda terlebih dahulu.')
         navigate('/profile')
@@ -79,7 +85,6 @@ export default function Login() {
           password: err.errors.password?.[0] || prev.password,
         }))
       }
-      toast.error(err.message || 'Gagal masuk. Periksa kembali email dan password.')
     } finally {
       setIsSubmitting(false)
     }

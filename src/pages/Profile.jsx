@@ -4,6 +4,7 @@ import { AlertCircle, ArrowLeft, Camera, Check, Loader2, Phone, X } from 'lucide
 import { toast } from 'sonner'
 import Avatar from '../components/Avatar'
 import PostCard from '../components/PostCard'
+import PostDetail from '../components/PostDetail'
 import { useAuth } from '../context/AuthContext'
 import {
   useMyPostsQuery,
@@ -23,14 +24,19 @@ export default function Profile() {
     !userId || (isAuthenticated && user && String(user.id) === String(userId))
 
   const [activeTab, setActiveTab] = useState('posts')
+  const [selectedPost, setSelectedPost] = useState(null)
   const [isEditing, setIsEditing] = useState(false)
   const [editName, setEditName] = useState('')
   const [editWhatsapp, setEditWhatsapp] = useState('')
   const [isSaving, setIsSaving] = useState(false)
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false)
 
-  const { data: myPosts = [], isLoading: loadingMine } = useMyPostsQuery()
-  const { data: savedPosts = [], isLoading: loadingSaved } = useSavedPostsQuery()
+  const { data: myPosts = [], isLoading: loadingMine } = useMyPostsQuery(
+    isOwnProfile && isAuthenticated
+  )
+  const { data: savedPosts = [], isLoading: loadingSaved } = useSavedPostsQuery(
+    isOwnProfile && isAuthenticated
+  )
   const { data: otherUserPosts = [], isLoading: loadingOther } = useUserOpenPostsQuery(
     isOwnProfile ? null : userId
   )
@@ -101,11 +107,16 @@ export default function Profile() {
       const formData = new FormData()
       formData.append('name', trimmedName)
       formData.append('whatsapp', trimmedWa)
-      await updateProfile(formData)
-      toast.success('Profil berhasil diperbarui!')
+      const promise = updateProfile(formData)
+      toast.promise(promise, {
+        loading: 'Menyimpan perubahan profil...',
+        success: 'Profil berhasil diperbarui!',
+        error: (err) => err?.message || 'Gagal memperbarui profil.',
+      })
+      await promise
       setIsEditing(false)
-    } catch (err) {
-      toast.error(err.message || 'Gagal memperbarui profil.')
+    } catch {
+      // Handled by toast.promise
     } finally {
       setIsSaving(false)
     }
@@ -125,18 +136,28 @@ export default function Profile() {
       setIsUploadingAvatar(true)
       const formData = new FormData()
       formData.append('avatar', file)
-      await updateProfile(formData)
-      toast.success('Foto profil berhasil diperbarui!')
-    } catch (err) {
-      toast.error(err.message || 'Gagal mengganti foto profil.')
+      const promise = updateProfile(formData)
+      toast.promise(promise, {
+        loading: 'Mengunggah foto profil...',
+        success: 'Foto profil berhasil diperbarui!',
+        error: (err) => err?.message || 'Gagal mengganti foto profil.',
+      })
+      await promise
+    } catch {
+      // Handled by toast.promise
     } finally {
       setIsUploadingAvatar(false)
     }
   }
 
   const handleLogout = async () => {
-    await logout()
-    toast.success('Berhasil keluar akun.')
+    const promise = logout()
+    toast.promise(promise, {
+      loading: 'Keluar dari akun...',
+      success: 'Berhasil keluar akun.',
+      error: 'Gagal keluar akun.',
+    })
+    await promise
     navigate('/login')
   }
 
@@ -382,10 +403,33 @@ export default function Profile() {
               key={post.id}
               post={post}
               isOwner={isOwnProfile && current.key === 'posts'}
+              onSelect={(p) => setSelectedPost(p)}
             />
           ))
         )}
       </div>
+
+      {/* Modal Detail Postingan di Halaman Profil */}
+      {selectedPost && (
+        <div
+          className="no-scrollbar fixed inset-0 z-50 overflow-y-auto overscroll-contain bg-black/70 px-3 py-6 backdrop-blur-[2px] sm:px-6 sm:py-10"
+          onClick={() => setSelectedPost(null)}
+        >
+          <div
+            className="mx-auto max-w-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <PostDetail
+              post={
+                current.items.find(
+                  (p) => String(p.id) === String(selectedPost.id)
+                ) || selectedPost
+              }
+              onBack={() => setSelectedPost(null)}
+            />
+          </div>
+        </div>
+      )}
     </div>
   )
 }

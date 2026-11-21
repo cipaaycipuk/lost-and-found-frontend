@@ -2,7 +2,7 @@ import apiClient, { USE_MOCK } from '../lib/axios'
 import { INITIAL_POSTS, currentUser } from '../lib/dummyData'
 import { normalizePost } from '../lib/formatters'
 
-const delay = (ms = 300) => new Promise((resolve) => setTimeout(resolve, ms))
+const delay = (ms = 0) => new Promise((resolve) => setTimeout(resolve, ms))
 
 // In-memory store for mock mode so create/bookmark/status updates persist during session
 let mockPostsStore = INITIAL_POSTS.map(normalizePost)
@@ -123,6 +123,44 @@ export const postService = {
     })
     const payload = res?.data ?? res
     return normalizePost(payload?.post ?? payload)
+  },
+
+  async updatePost(id, payload) {
+    if (USE_MOCK) {
+      await delay(300)
+      mockPostsStore = mockPostsStore.map((p) => {
+        if (String(p.id) !== String(id)) return p
+        if (payload instanceof FormData) {
+          const keptUrls = payload.getAll('existing_images[]')
+          const newFiles = payload
+            .getAll('images[]')
+            .filter((f) => f instanceof File)
+            .map((f) => URL.createObjectURL(f))
+          const mergedImages = [...keptUrls, ...newFiles]
+          return normalizePost({
+            ...p,
+            type: payload.get('type') || p.type,
+            title: payload.get('title') || p.title,
+            category: payload.get('category') || p.category,
+            location: payload.get('location') || p.location,
+            incident_date: payload.get('incident_date') || p.rawDate,
+            description: payload.get('description') || p.description,
+            images: mergedImages.length > 0 ? mergedImages : p.images,
+          })
+        }
+        return normalizePost({ ...p, ...payload })
+      })
+      return mockPostsStore.find((p) => String(p.id) === String(id))
+    }
+
+    const isFormData = payload instanceof FormData
+    const res = isFormData
+      ? await apiClient.post(`/posts/${id}?_method=PUT`, payload, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+        })
+      : await apiClient.put(`/posts/${id}`, payload)
+    const data = res?.data ?? res
+    return normalizePost(data?.post ?? data)
   },
 
   async updatePostStatus(id, status) {
