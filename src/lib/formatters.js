@@ -1,3 +1,49 @@
+import { API_BASE_URL } from './axios'
+
+const BACKEND_ORIGIN = API_BASE_URL.replace(/\/api\/?$/, '')
+
+/**
+ * Resolusi URL media/gambar dari backend (misal "/storage/posts/..." -> "http://localhost:8000/storage/posts/...")
+ */
+export function resolveMediaUrl(url) {
+  if (!url) return null
+  const value =
+    typeof url === 'object'
+      ? url.image_url || url.img_url || url.url || url.image_path || url.path || ''
+      : String(url)
+  if (!value) return null
+
+  if (
+    value.startsWith('http://') ||
+    value.startsWith('https://') ||
+    value.startsWith('blob:') ||
+    value.startsWith('data:')
+  ) {
+    return value
+  }
+
+  // Asset statis frontend di folder public/
+  if (value.startsWith('/users/') || value.startsWith('/posts-img/')) {
+    return value
+  }
+
+  // Path storage Laravel
+  if (value.startsWith('/storage/')) {
+    return `${BACKEND_ORIGIN}${value}`
+  }
+  if (value.startsWith('storage/')) {
+    return `${BACKEND_ORIGIN}/${value}`
+  }
+  if (value.startsWith('posts/') || value.startsWith('avatars/')) {
+    return `${BACKEND_ORIGIN}/storage/${value}`
+  }
+  if (value.startsWith('/')) {
+    return `${BACKEND_ORIGIN}${value}`
+  }
+
+  return `${BACKEND_ORIGIN}/storage/${value}`
+}
+
 /**
  * Format nomor WhatsApp lokal (08xx / +62) menjadi link wa.me/62...
  */
@@ -56,11 +102,15 @@ export function normalizePost(raw) {
   const rawType = String(raw.type || raw.tipe || 'kehilangan').toLowerCase()
   const type = rawType === 'ditemukan' ? 'ditemukan' : 'kehilangan'
 
-  const images = Array.isArray(raw.images)
+  const rawImages = Array.isArray(raw.images) && raw.images.length > 0
     ? raw.images
-    : raw.image
-      ? [raw.image]
+    : raw.image_url || raw.img_url || raw.image
+      ? [raw.image_url || raw.img_url || raw.image]
       : []
+
+  const images = rawImages.map(resolveMediaUrl).filter(Boolean)
+
+  const authorObj = raw.author || raw.user || {}
 
   return {
     id: raw.id,
@@ -76,17 +126,17 @@ export function normalizePost(raw) {
     rawDate: raw.incident_date || raw.created_at || '',
     description: raw.description || raw.deskripsi || '',
     images,
-    image: images[0] || null,
+    image: images[0] || resolveMediaUrl(raw.image_url || raw.img_url || raw.image) || null,
     commentsCount: raw.comments_count ?? raw.commentsCount ?? raw.commentCount ?? 0,
     isSaved: Boolean(raw.is_saved ?? raw.isSaved ?? false),
     createdAt: raw.created_at || new Date().toISOString(),
     timeAgo: raw.timeAgo || formatTimeAgo(raw.created_at),
     author: {
-      id: raw.author?.id ?? 1,
-      name: raw.author?.name || 'Pengguna',
-      email: raw.author?.email || '',
-      whatsapp: raw.author?.whatsapp || '',
-      avatar: raw.author?.avatar_url || raw.author?.avatar || '',
+      id: authorObj.id ?? raw.user_id ?? 1,
+      name: authorObj.name || 'Pengguna',
+      email: authorObj.email || '',
+      whatsapp: authorObj.whatsapp || authorObj.contact || '',
+      avatar: resolveMediaUrl(authorObj.avatar_url || authorObj.avatar) || '',
     },
   }
 }

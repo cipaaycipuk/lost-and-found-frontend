@@ -1,15 +1,25 @@
 import apiClient, { API_BASE_URL, USE_MOCK } from '../lib/axios'
 import { currentUser } from '../lib/dummyData'
+import { EMAIL_DOMAIN } from '../lib/validators'
 
 const delay = (ms = 350) => new Promise((resolve) => setTimeout(resolve, ms))
 
+const assertWidyatamaEmail = (email) => {
+  const normalized = String(email || '').trim().toLowerCase()
+  if (!normalized || !normalized.endsWith(EMAIL_DOMAIN) || normalized.length <= EMAIL_DOMAIN.length) {
+    throw new Error(`Hanya email kampus (${EMAIL_DOMAIN}) yang diperbolehkan untuk login.`)
+  }
+}
+
 export const authService = {
   async login({ email, password }) {
+    assertWidyatamaEmail(email)
+
     if (USE_MOCK) {
       await delay()
       const user = {
         ...currentUser,
-        email,
+        email: email.trim().toLowerCase(),
         name: email.split('@')[0].replace(/[._]/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()),
       }
       return {
@@ -48,9 +58,14 @@ export const authService = {
   },
 
   async loginWithGoogle(payload) {
+    if (payload?.email) {
+      assertWidyatamaEmail(payload.email)
+    }
+
     if (USE_MOCK) {
       await delay()
       const email = payload.email || currentUser.email
+      assertWidyatamaEmail(email)
       const name =
         payload.name ||
         email

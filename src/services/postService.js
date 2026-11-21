@@ -212,4 +212,31 @@ export const postService = {
       throw err
     }
   },
+
+  async getUserOpenPosts(userId) {
+    if (!userId) return []
+
+    if (USE_MOCK) {
+      await delay(220)
+      return mockPostsStore.filter(
+        (p) => String(p.author?.id) === String(userId) && p.status !== 'selesai'
+      )
+    }
+
+    try {
+      const res = await apiClient.get('/posts', { params: { limit: 100 } })
+      return extractList(res)
+        .map(normalizePost)
+        .filter(
+          (p) => String(p.author?.id) === String(userId) && p.status !== 'selesai'
+        )
+    } catch (err) {
+      if (!err.status) {
+        return mockPostsStore.filter(
+          (p) => String(p.author?.id) === String(userId) && p.status !== 'selesai'
+        )
+      }
+      throw err
+    }
+  },
 }

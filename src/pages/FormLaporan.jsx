@@ -98,7 +98,6 @@ export default function FormLaporan() {
     data.append("description", form.deskripsi.trim());
     fotos.forEach((f) => {
       data.append("images[]", f);
-      data.append("images", f);
     });
 
     createPost.mutate(data, {

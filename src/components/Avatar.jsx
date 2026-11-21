@@ -1,6 +1,9 @@
+import { resolveMediaUrl } from '../lib/formatters'
+
 export default function Avatar({ src, name = '', className = '' }) {
-  if (src) {
-    return <img src={src} alt={name} className={`rounded-full object-cover ${className}`} />
+  const resolvedSrc = resolveMediaUrl(src)
+  if (resolvedSrc) {
+    return <img src={resolvedSrc} alt={name} className={`rounded-full object-cover ${className}`} />
   }
 
   const initials = name

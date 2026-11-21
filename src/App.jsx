@@ -1,6 +1,5 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
 import Login from './pages/Login'
-import Register from './pages/Register'
 import Home from './pages/Home'
 import Profile from './pages/Profile'
 import FormLaporan from './pages/FormLaporan'
@@ -18,9 +17,17 @@ export default function App() {
         }
       />
       <Route path="/login" element={<Login />} />
-      <Route path="/register" element={<Register />} />
+      <Route path="/register" element={<Navigate to="/login" replace />} />
       <Route
         path="/profile"
+        element={
+          <DefaultLayout>
+            <Profile />
+          </DefaultLayout>
+        }
+      />
+      <Route
+        path="/profile/:userId"
         element={
           <DefaultLayout>
             <Profile />

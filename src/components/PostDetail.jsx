@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import {
   ArrowLeft,
   Phone,
@@ -9,11 +10,14 @@ import {
   Send,
 } from 'lucide-react'
 import Avatar from './Avatar'
+import { useAuth } from '../context/AuthContext'
 import { formatWhatsAppUrl } from '../lib/formatters'
 import { useToggleBookmarkMutation } from '../hooks/usePosts'
 import { useCommentsQuery, useCreateCommentMutation } from '../hooks/useComments'
 
 export default function PostDetail({ post, onBack }) {
+  const navigate = useNavigate()
+  const { user } = useAuth()
   const [commentText, setCommentText] = useState('')
   const [replyTo, setReplyTo] = useState(null)
   const [isImageOpen, setIsImageOpen] = useState(false)
@@ -70,14 +74,24 @@ export default function PostDetail({ post, onBack }) {
 
       {/* 2. Header Post */}
       <div className="flex items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
+        <div
+          onClick={() => {
+            if (!post.author?.id) return
+            const targetPath =
+              user && String(user.id) === String(post.author.id)
+                ? '/profile'
+                : `/profile/${post.author.id}`
+            navigate(targetPath, { state: { author: post.author } })
+          }}
+          className="group/author flex cursor-pointer items-center gap-3"
+        >
           <Avatar
             src={post.author?.avatar}
             name={post.author?.name}
-            className="h-11 w-11 shrink-0 text-sm"
+            className="h-11 w-11 shrink-0 text-sm transition group-hover/author:ring-2 group-hover/author:ring-black/20"
           />
           <div>
-            <h3 className="text-sm font-bold text-gray-900">
+            <h3 className="text-sm font-bold text-gray-900 group-hover/author:underline">
               {post.author?.name}
             </h3>
             <p className="text-xs text-gray-500">{post.timeAgo}</p>

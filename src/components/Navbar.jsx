@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { Bell, Plus, Search, User, X, CheckCheck } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
+import { resolveMediaUrl } from '../lib/formatters'
 import {
   useMarkAllNotificationsReadMutation,
   useMarkNotificationReadMutation,
@@ -172,9 +173,9 @@ export default function Navbar() {
             aria-label={isAuthenticated ? 'Profil saya' : 'Masuk akun'}
             className="flex items-center gap-2 rounded-full p-1 text-gray-300 transition hover:bg-white/10 hover:text-white"
           >
-            {isAuthenticated && user?.avatar ? (
+            {isAuthenticated && (user?.avatar_url || user?.avatar) ? (
               <img
-                src={user.avatar}
+                src={resolveMediaUrl(user.avatar_url || user.avatar)}
                 alt={user.name}
                 className="h-8 w-8 rounded-full border border-white/25 object-cover"
               />

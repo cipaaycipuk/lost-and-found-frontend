@@ -5,6 +5,7 @@ import { toast } from 'sonner'
 import { useAuth } from '../context/AuthContext'
 import { authService } from '../services/authService'
 import { USE_MOCK } from '../lib/axios'
+import { EMAIL_DOMAIN } from '../lib/validators'
 import { INITIAL_POSTS, currentUser } from '../lib/dummyData'
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || ''
@@ -38,14 +39,37 @@ export default function GoogleAuthButton({ label = 'Continue with Google' }) {
 
   // Hook resmi dari @react-oauth/google untuk mendapatkan access_token OAuth 2.0
   const triggerGoogleOAuth = useGoogleLogin({
+    hosted_domain: 'widyatama.ac.id',
     onSuccess: async (tokenResponse) => {
       try {
         setLoading(true)
-        await loginWithGoogle({
+        // Verifikasi domain email sebelum dikirim ke backend
+        try {
+          const infoRes = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+            headers: { Authorization: `Bearer ${tokenResponse.access_token}` },
+          })
+          if (infoRes.ok) {
+            const profile = await infoRes.json()
+            if (!String(profile?.email || '').toLowerCase().endsWith(EMAIL_DOMAIN)) {
+              toast.error(`Login ditolak. Hanya email ${EMAIL_DOMAIN} yang diperbolehkan.`)
+              setLoading(false)
+              return
+            }
+          }
+        } catch {
+          // Jika fetch userinfo gagal, biarkan backend memvalidasi access_token
+        }
+
+        const data = await loginWithGoogle({
           access_token: tokenResponse.access_token,
         })
         toast.success('Login dengan Google berhasil!')
-        navigate('/')
+        if (!String(data?.user?.whatsapp || '').trim()) {
+          toast.info('Lengkapi nomor WhatsApp Anda terlebih dahulu.')
+          navigate('/profile')
+        } else {
+          navigate('/')
+        }
       } catch (err) {
         toast.error(err.message || 'Gagal verifikasi token Google di server.')
       } finally {
@@ -63,12 +87,28 @@ export default function GoogleAuthButton({ label = 'Continue with Google' }) {
     if (!credentialResponse?.credential) return
     try {
       setLoading(true)
-      await loginWithGoogle({
+      try {
+        const payload = JSON.parse(atob(credentialResponse.credential.split('.')[1]))
+        if (payload?.email && !String(payload.email).toLowerCase().endsWith(EMAIL_DOMAIN)) {
+          toast.error(`Login ditolak. Hanya email ${EMAIL_DOMAIN} yang diperbolehkan.`)
+          setLoading(false)
+          return
+        }
+      } catch {
+        // Abaikan error decode, biarkan backend memvalidasi JWT
+      }
+
+      const data = await loginWithGoogle({
         credential: credentialResponse.credential,
         id_token: credentialResponse.credential,
       })
       toast.success('Login dengan Google berhasil!')
-      navigate('/')
+      if (!String(data?.user?.whatsapp || '').trim()) {
+        toast.info('Lengkapi nomor WhatsApp Anda terlebih dahulu.')
+        navigate('/profile')
+      } else {
+        navigate('/')
+      }
     } catch (err) {
       toast.error(err.message || 'Gagal verifikasi Google Credential di server.')
     } finally {
@@ -101,10 +141,15 @@ export default function GoogleAuthButton({ label = 'Continue with Google' }) {
   const handleSelectMockAccount = async (account) => {
     try {
       setLoading(true)
-      await loginWithGoogle(account)
+      const data = await loginWithGoogle(account)
       toast.success(`Masuk dengan Google (${account.email})`)
       setShowMockPicker(false)
-      navigate('/')
+      if (!String(data?.user?.whatsapp || '').trim()) {
+        toast.info('Lengkapi nomor WhatsApp Anda terlebih dahulu.')
+        navigate('/profile')
+      } else {
+        navigate('/')
+      }
     } catch (err) {
       toast.error(err.message || 'Gagal login mock Google.')
     } finally {

@@ -8,6 +8,7 @@ export const postKeys = {
   detail: (id) => ['posts', 'detail', String(id)],
   mine: ['posts', 'me'],
   saved: ['posts', 'saved'],
+  byUser: (userId) => ['posts', 'user', String(userId)],
 }
 
 export function usePostsQuery(filters) {
@@ -36,6 +37,14 @@ export function useSavedPostsQuery() {
   return useQuery({
     queryKey: postKeys.saved,
     queryFn: () => postService.getSavedPosts(),
+  })
+}
+
+export function useUserOpenPostsQuery(userId) {
+  return useQuery({
+    queryKey: postKeys.byUser(userId),
+    queryFn: () => postService.getUserOpenPosts(userId),
+    enabled: Boolean(userId),
   })
 }
 

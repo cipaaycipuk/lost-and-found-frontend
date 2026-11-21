@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import {
   MapPin,
   CalendarDays,
@@ -11,6 +12,7 @@ import {
   Tag,
 } from 'lucide-react'
 import Avatar from './Avatar'
+import { useAuth } from '../context/AuthContext'
 import { formatWhatsAppUrl } from '../lib/formatters'
 import {
   useDeletePostMutation,
@@ -19,9 +21,21 @@ import {
 } from '../hooks/usePosts'
 
 export default function PostCard({ post, isOwner = false, onSelect }) {
+  const navigate = useNavigate()
+  const { user } = useAuth()
   const isKehilangan = post.type === 'kehilangan'
   const isDone = post.status === 'selesai'
   const [isImageOpen, setIsImageOpen] = useState(false)
+
+  const handleOpenAuthorProfile = (e) => {
+    e.stopPropagation()
+    if (!post.author?.id) return
+    const targetPath =
+      user && String(user.id) === String(post.author.id)
+        ? '/profile'
+        : `/profile/${post.author.id}`
+    navigate(targetPath, { state: { author: post.author } })
+  }
 
   const toggleBookmark = useToggleBookmarkMutation()
   const updateStatus = useUpdatePostStatusMutation()
@@ -50,15 +64,18 @@ export default function PostCard({ post, isOwner = false, onSelect }) {
     >
       {/* Header Post */}
       <div className="flex items-center justify-between gap-3">
-        <div className="flex min-w-0 items-center gap-3">
+        <div
+          onClick={handleOpenAuthorProfile}
+          className="group/author flex min-w-0 cursor-pointer items-center gap-3"
+        >
           <Avatar
             src={post.author?.avatar}
             name={post.author?.name}
-            className="h-11 w-11 shrink-0 text-sm"
+            className="h-11 w-11 shrink-0 text-sm transition group-hover/author:ring-2 group-hover/author:ring-black/20"
           />
 
           <div className="min-w-0">
-            <h3 className="truncate text-sm font-bold text-gray-900">
+            <h3 className="truncate text-sm font-bold text-gray-900 group-hover/author:underline">
               {post.author?.name}
             </h3>
             <p className="text-xs text-gray-500">{post.timeAgo}</p>

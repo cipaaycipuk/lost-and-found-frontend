@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { toast } from 'sonner'
 import AuthLayout from '../components/AuthLayout'
 import GoogleAuthButton from '../components/GoogleAuthButton'
@@ -15,15 +15,32 @@ export default function Login() {
   const [errors, setErrors] = useState({})
   const [isSubmitting, setIsSubmitting] = useState(false)
 
-  // Tangani callback jika menggunakan redirect OAuth (?token=...)
+  // Tangani callback jika menggunakan redirect OAuth (?token=... atau ?error=...)
   useEffect(() => {
+    const errorFromUrl = searchParams.get('error')
+    if (errorFromUrl) {
+      toast.error(errorFromUrl)
+      return
+    }
+
     const tokenFromUrl = searchParams.get('token')
     if (tokenFromUrl) {
       persistSession(tokenFromUrl, null)
       refreshUser()
-        .then(() => {
+        .then((u) => {
+          if (u?.email && !u.email.toLowerCase().endsWith('@widyatama.ac.id')) {
+            localStorage.removeItem('auth_token')
+            localStorage.removeItem('auth_user')
+            toast.error('Hanya email @widyatama.ac.id yang diperbolehkan untuk login.')
+            return
+          }
           toast.success('Login Google berhasil!')
-          navigate('/', { replace: true })
+          if (!String(u?.whatsapp || '').trim()) {
+            toast.info('Lengkapi nomor WhatsApp Anda terlebih dahulu.')
+            navigate('/profile', { replace: true })
+          } else {
+            navigate('/', { replace: true })
+          }
         })
         .catch(() => {})
     }
@@ -46,9 +63,14 @@ export default function Login() {
 
     try {
       setIsSubmitting(true)
-      await login(values)
+      const data = await login(values)
       toast.success('Login berhasil!')
-      navigate('/')
+      if (!String(data?.user?.whatsapp || '').trim()) {
+        toast.info('Lengkapi nomor WhatsApp Anda terlebih dahulu.')
+        navigate('/profile')
+      } else {
+        navigate('/')
+      }
     } catch (err) {
       if (err.errors) {
         setErrors((prev) => ({
@@ -74,7 +96,7 @@ export default function Login() {
           name="email"
           type="email"
           autoComplete="email"
-          placeholder="Enter your email here"
+          placeholder="nama@widyatama.ac.id"
           value={values.email}
           onChange={handleChange}
           error={errors.email}
@@ -105,13 +127,6 @@ export default function Login() {
         </div>
 
         <GoogleAuthButton label="Continue with Google" />
-
-        <p className="text-sm">
-          Don&apos;t have an account yet?{' '}
-          <Link to="/register" className="underline underline-offset-4">
-            register here
-          </Link>
-        </p>
       </form>
     </AuthLayout>
   )
