@@ -9,6 +9,8 @@ import ErrorPage from "./pages/ErrorPage";
 import DefaultLayout from "./components/DefaultLayout";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import AdminPosts from "./pages/admin/AdminPosts";
+import AdminUsers from "./pages/admin/AdminUsers";
+import AdminClaims from "./pages/admin/AdminClaims";
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -77,6 +79,8 @@ export default function App() {
         />
         <Route path="/admin/dashboard" element={<AdminDashboard />} />
         <Route path="/admin/posts" element={<AdminPosts />} />
+        <Route path="/admin/users" element={<AdminUsers />} />
+        <Route path="/admin/claims" element={<AdminClaims />} />
         <Route path="/403" element={<ErrorPage code={403} />} />
         <Route path="/500" element={<ErrorPage code={500} />} />
         <Route path="*" element={<ErrorPage code={404} />} />
