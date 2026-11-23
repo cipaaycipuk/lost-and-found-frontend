@@ -125,14 +125,12 @@ export default function AdminClaims() {
 
   return (
     <>
-      <AdminNavbar />
-
       <div className="mx-10 py-8 space-y-6">
         {/* Header */}
         <div>
           <h1 className="text-2xl font-bold text-gray-900">
             Pengajuan Klaim
-            <span className="ml-2 text-gray-400">
+            <span className="ml-2 ">
               ({filteredClaims.length})
             </span>
           </h1>

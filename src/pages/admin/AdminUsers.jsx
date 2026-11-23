@@ -12,7 +12,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import AdminNavbar from "@/components/AdminNavbar";
 
 // Mock data sementara, mengikuti data di Dashboard
 const users = [
@@ -106,8 +105,7 @@ export default function AdminUsers() {
   );
 
   return (
-    <div className="space-y-5">
-      <AdminNavbar />
+    <div className="space-y-5 mt-8">
 
       {/* Page Heading */}
       <div className="mx-10">

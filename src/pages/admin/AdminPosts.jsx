@@ -12,7 +12,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import AdminNavbar from "@/components/AdminNavbar";
 
 const posts = [
   {
@@ -149,8 +148,7 @@ export default function AdminPosts() {
   const endItem = Math.min(page * itemsPerPage, filteredPosts.length);
 
   return (
-    <div className="space-y-5">
-      <AdminNavbar />
+    <div className="space-y-15 mt-8">
       {/* Page Heading */}
       <div className="mx-10">
         <div className="mb-5">

@@ -7,7 +7,6 @@ import {
   Trash2,
   Eye,
 } from "lucide-react";
-import AdminNavbar from "@/components/AdminNavbar";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
@@ -21,7 +20,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import AdminSidebar from "@/components/AdminSidebar";
 
 const posts = [
   {
@@ -179,23 +177,6 @@ const stats = [
   { label: "Selesai", value: "31", icon: CheckCircle2 },
   { label: "Pengguna terdaftar", value: "212", icon: Users },
 ];
-
-// const [activeTab, setActiveTab] = useState("dashboard")
-// {activeTab === "dashboard" && (
-//   <DashboardContent />
-// )}
-
-// {activeTab === "posts" && (
-//   <PostsTable />
-// )}
-
-// {activeTab === "users" && (
-//   <UsersTable />
-// )}
-
-// {activeTab === "claims" && (
-//   <ClaimsTable />
-// )}
 
 function StatCard({ item }) {
   const Icon = item.icon;
@@ -422,9 +403,7 @@ export default function AdminDashboard() {
 
   return (
     <div className="min-h-screen bg-[#f5f5f5] text-[#171717]">
-      <AdminNavbar />
       <div className="mx-auto flex min-h-[calc(100vh-56px)] max-w-[1600px] flex-col md:flex-row">
-        <AdminSidebar activeTab={activeTab} onTabChange={setActiveTab} />
 
         <main className="min-w-0 flex-1 px-4 py-6 sm:px-6 lg:px-8">
           <div className="mb-5">
