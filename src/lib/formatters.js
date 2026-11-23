@@ -128,7 +128,11 @@ export function normalizePost(raw) {
     images,
     image: images[0] || resolveMediaUrl(raw.image_url || raw.img_url || raw.image) || null,
     commentsCount: raw.comments_count ?? raw.commentsCount ?? raw.commentCount ?? 0,
+    claimsCount: raw.claims_count ?? raw.claimsCount ?? 0,
     isSaved: Boolean(raw.is_saved ?? raw.isSaved ?? false),
+    myClaim: raw.my_claim ?? raw.myClaim ?? null,
+    reportMeta: raw.report_meta ?? raw.reportMeta ?? null,
+    deletedAt: raw.deleted_at ?? null,
     createdAt: raw.created_at || new Date().toISOString(),
     timeAgo: raw.timeAgo || formatTimeAgo(raw.created_at),
     author: {

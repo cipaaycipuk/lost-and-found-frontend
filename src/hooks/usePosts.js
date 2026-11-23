@@ -8,6 +8,7 @@ export const postKeys = {
   detail: (id) => ['posts', 'detail', String(id)],
   mine: ['posts', 'me'],
   saved: ['posts', 'saved'],
+  trashed: ['posts', 'trashed'],
   byUser: (userId) => ['posts', 'user', String(userId)],
 }
 
@@ -36,6 +37,7 @@ export function usePostDetailQuery(id, initialPost = null) {
       }
       return undefined
     },
+    initialDataUpdatedAt: 0,
   })
 }
 
@@ -58,8 +60,34 @@ export function useSavedPostsQuery(enabled = true) {
 export function useUserOpenPostsQuery(userId) {
   return useQuery({
     queryKey: postKeys.byUser(userId),
-    queryFn: () => postService.getUserOpenPosts(userId),
+    queryFn: () => postService.getPublicUserProfile(userId),
     enabled: Boolean(userId),
+  })
+}
+
+export function useTrashedPostsQuery(enabled = true) {
+  return useQuery({
+    queryKey: postKeys.trashed,
+    queryFn: () => postService.getTrashedPosts(),
+    enabled,
+  })
+}
+
+export function useRestorePostMutation() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (id) => {
+      const promise = postService.restorePost(id)
+      toast.promise(promise, {
+        loading: 'Memulihkan laporan...',
+        success: 'Laporan berhasil dipulihkan!',
+        error: (err) => err?.message || 'Gagal memulihkan laporan.',
+      })
+      return promise
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: postKeys.all })
+    },
   })
 }
 

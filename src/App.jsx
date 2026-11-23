@@ -5,6 +5,7 @@ import Home from './pages/Home'
 import Profile from './pages/Profile'
 import FormLaporan from './pages/FormLaporan'
 import PostDetailPage from './pages/PostDetailPage'
+import AdminDashboard from './pages/AdminDashboard'
 import ErrorPage from './pages/ErrorPage'
 import DefaultLayout from './components/DefaultLayout'
 
@@ -23,60 +24,68 @@ export default function App() {
     <>
       <ScrollToTop />
       <Routes>
-      <Route
-        path="/"
-        element={
-          <DefaultLayout>
-            <Home />
-          </DefaultLayout>
-        }
-      />
-      <Route path="/login" element={<Login />} />
-      <Route path="/register" element={<Navigate to="/login" replace />} />
-      <Route
-        path="/posts/:postId"
-        element={
-          <DefaultLayout>
-            <PostDetailPage />
-          </DefaultLayout>
-        }
-      />
-      <Route
-        path="/profile"
-        element={
-          <DefaultLayout>
-            <Profile />
-          </DefaultLayout>
-        }
-      />
-      <Route
-        path="/profile/:userId"
-        element={
-          <DefaultLayout>
-            <Profile />
-          </DefaultLayout>
-        }
-      />
-      <Route
-        path="/buat-laporan"
-        element={
-          <DefaultLayout>
-            <FormLaporan />
-          </DefaultLayout>
-        }
-      />
-      <Route
-        path="/edit-laporan/:postId"
-        element={
-          <DefaultLayout>
-            <FormLaporan />
-          </DefaultLayout>
-        }
-      />
-      <Route path="/403" element={<ErrorPage code={403} />} />
-      <Route path="/500" element={<ErrorPage code={500} />} />
-      <Route path="*" element={<ErrorPage code={404} />} />
-    </Routes>
+        <Route
+          path="/"
+          element={
+            <DefaultLayout>
+              <Home />
+            </DefaultLayout>
+          }
+        />
+        <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Navigate to="/login" replace />} />
+        <Route
+          path="/posts/:postId"
+          element={
+            <DefaultLayout>
+              <PostDetailPage />
+            </DefaultLayout>
+          }
+        />
+        <Route
+          path="/profile"
+          element={
+            <DefaultLayout>
+              <Profile />
+            </DefaultLayout>
+          }
+        />
+        <Route
+          path="/profile/:userId"
+          element={
+            <DefaultLayout>
+              <Profile />
+            </DefaultLayout>
+          }
+        />
+        <Route
+          path="/buat-laporan"
+          element={
+            <DefaultLayout>
+              <FormLaporan />
+            </DefaultLayout>
+          }
+        />
+        <Route
+          path="/edit-laporan/:postId"
+          element={
+            <DefaultLayout>
+              <FormLaporan />
+            </DefaultLayout>
+          }
+        />
+        <Route
+          path="/admin"
+          element={
+            <DefaultLayout>
+              <AdminDashboard />
+            </DefaultLayout>
+          }
+        />
+        <Route path="/403" element={<ErrorPage code={403} />} />
+        <Route path="/500" element={<ErrorPage code={500} />} />
+        <Route path="*" element={<ErrorPage code={404} />} />
+      </Routes>
     </>
   )
 }

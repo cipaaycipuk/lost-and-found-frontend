@@ -3,7 +3,7 @@ import { Link, useSearchParams } from 'react-router-dom'
 import { AlertCircle, PackageSearch, Plus, RefreshCw } from 'lucide-react'
 import FilterSidebar from '../components/FilterSidebar'
 import PostCard from '../components/PostCard'
-import PostDetail from '../components/PostDetail'
+import PostDetailModal from '../components/PostDetailModal'
 import { usePostDetailQuery, usePostsQuery } from '../hooks/usePosts'
 
 function PostSkeleton() {
@@ -213,17 +213,10 @@ export default function Home() {
 
       {/* Modal Detail Postingan */}
       {activeModalPost && (
-        <div
-          className="no-scrollbar fixed inset-0 z-50 overflow-y-auto overscroll-contain bg-black/70 px-3 py-6 backdrop-blur-[2px] sm:px-6 sm:py-10"
-          onClick={handleCloseModal}
-        >
-          <div
-            className="mx-auto max-w-2xl"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <PostDetail post={activeModalPost} onBack={handleCloseModal} />
-          </div>
-        </div>
+        <PostDetailModal
+          post={activeModalPost}
+          onClose={handleCloseModal}
+        />
       )}
     </div>
   )

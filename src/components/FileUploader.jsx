@@ -1,6 +1,8 @@
 import { X } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 
+const ALLOWED_MIME_TYPES = ["image/jpeg", "image/jpg", "image/png"];
+
 // Satu thumbnail. Mendukung objek File baru maupun string URL gambar lama (saat Edit Laporan).
 function Thumb({ file, onRemove, onClick }) {
   const [url, setUrl] = useState(() => (typeof file === "string" ? file : null));
@@ -46,8 +48,8 @@ const kunci = (f) =>
 export default function FileUploader({
   value = [],
   onChange,
-  maxFiles = 5,
-  maxSizeMB = 5,
+  maxFiles = 3,
+  maxSizeMB = 2,
   accent = "#F05A00",
 }) {
   const [dragging, setDragging] = useState(false);
@@ -65,10 +67,10 @@ export default function FileUploader({
     const diterima = [];
 
     for (const f of baru) {
-      if (!f.type.startsWith("image/")) {
-        pesan.push(`${f.name}: bukan file gambar`);
+      if (!ALLOWED_MIME_TYPES.includes(f.type)) {
+        pesan.push(`${f.name}: hanya format JPG/JPEG/PNG yang diperbolehkan`);
       } else if (f.size > maxSizeMB * 1024 * 1024) {
-        pesan.push(`${f.name}: lebih dari ${maxSizeMB}MB`);
+        pesan.push(`${f.name}: ukuran melebihi ${maxSizeMB}MB`);
       } else if (ada.has(kunci(f))) {
         pesan.push(`${f.name}: sudah ditambahkan`);
       } else {
@@ -117,10 +119,9 @@ export default function FileUploader({
     }
   };
 
-   const handleClick = (foto) => {
-    console.log("Klik foto:", foto.name);
+  const handleClick = (foto) => {
     setCurrentFoto(foto);
-   }
+  };
 
   const handleCloseModal = () => {
     setCurrentFoto(null);
@@ -138,7 +139,7 @@ export default function FileUploader({
       <input
         ref={inputRef}
         type="file"
-        accept="image/*"
+        accept="image/jpeg,image/jpg,image/png"
         multiple
         onChange={handleInput}
         className="hidden"
@@ -161,7 +162,7 @@ export default function FileUploader({
         onDragEnter={handleDragEnter}
         onDragLeave={handleDragLeave}
         style={dragging ? { borderColor: accent, color: accent } : undefined}
-        className={`flex h-32 w-full select-none flex-col items-center justify-center rounded-md border-2 border-dashed text-gray-400 outline-none focus-visible:ring-2 focus-visible:ring-gray-400 ${
+        className={`flex h-32 w-full select-none flex-col items-center justify-center rounded-md border-2 border-dashed text-gray-500 outline-none focus-visible:ring-2 focus-visible:ring-gray-400 ${
           dragging ? "bg-white" : "border-gray-300 bg-[#ebebeb]"
         } ${penuh ? "cursor-not-allowed opacity-60" : "cursor-pointer hover:bg-gray-200"}`}
       >
@@ -175,7 +176,7 @@ export default function FileUploader({
         </span>
         {!penuh && !dragging && (
           <span className="mt-0.5 text-[11px]">
-            Seret &amp; lepas, atau klik untuk memilih
+            Seret &amp; lepas, atau klik (JPG/PNG, maks. {maxFiles} foto @ {maxSizeMB}MB)
           </span>
         )}
       </div>
@@ -195,21 +196,19 @@ export default function FileUploader({
         </>
       )}
 
-
       {currentFoto && (
         <div
           className="fixed inset-0 z-100 flex items-center justify-center bg-black/90 p-4"
           onClick={handleCloseModal}
         >
-          {/* Close Button */}
           <button
+            type="button"
             onClick={handleCloseModal}
             className="absolute right-5 top-5 rounded-full bg-white/10 p-2 text-white transition hover:bg-white/20 cursor-pointer"
           >
             <X size={28} />
           </button>
 
-          {/* Full Image */}
           <img
             src={
               typeof currentFoto === "string"
@@ -221,7 +220,6 @@ export default function FileUploader({
           />
         </div>
       )}
-
     </div>
   );
 }

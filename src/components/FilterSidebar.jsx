@@ -3,7 +3,6 @@ import {
   TriangleAlert,
   ChevronDown,
   ChevronUp,
-  RotateCcw,
   SlidersHorizontal,
 } from 'lucide-react'
 import {
@@ -89,27 +88,27 @@ export default function FilterSidebar({
         )}
       </div>
 
-      {/* Box Filter */}
+      {/* Filter Controls langsung di atas latar halaman (tanpa kotak pembungkus) */}
       <div
         className={`${
           isMobileFilterOpen ? 'block' : 'hidden'
-        } space-y-4 rounded-xl border border-gray-200/80 bg-white p-4 shadow-sm sm:p-5 lg:block`}
+        } space-y-4 lg:block`}
       >
         <div>
-          <label className="mb-2 block text-xs font-semibold text-gray-600">
+          <label className="mb-2 block text-xs font-medium text-gray-500">
             Jenis Laporan
           </label>
 
-          <div className="flex gap-1 rounded-lg bg-gray-100 p-1">
+          <div className="flex gap-1 rounded-xl border border-gray-200/80 bg-white p-1 shadow-xs">
             {['Semua', 'Kehilangan', 'Ditemukan'].map((tab) => (
               <button
                 key={tab}
                 type="button"
                 onClick={() => setActiveTab(tab)}
-                className={`flex-1 rounded-md py-1.5 text-xs font-medium transition ${
+                className={`flex-1 rounded-lg py-1.5 text-xs font-semibold transition ${
                   activeTab === tab
-                    ? 'bg-black text-white shadow-sm'
-                    : 'text-gray-600 hover:text-black'
+                    ? 'bg-[#1C1C1C] text-white shadow-xs'
+                    : 'text-gray-700 hover:text-black'
                 }`}
               >
                 {tab}
@@ -121,14 +120,14 @@ export default function FilterSidebar({
         <div>
           <label
             htmlFor="filter-category"
-            className="mb-1.5 block text-xs font-semibold text-gray-600"
+            className="mb-1.5 block text-xs font-medium text-gray-500"
           >
             Kategori
           </label>
           <Select value={category} onValueChange={setCategory}>
             <SelectTrigger
               id="filter-category"
-              className="h-9 w-full rounded-lg border-0 bg-[#EFEFEF] text-xs text-gray-800"
+              className="h-10 w-full rounded-lg border border-gray-200/80 bg-white text-xs font-medium text-gray-900 shadow-xs hover:bg-gray-50"
             >
               <SelectValue placeholder="Pilih kategori" />
             </SelectTrigger>
@@ -145,14 +144,14 @@ export default function FilterSidebar({
         <div>
           <label
             htmlFor="filter-location"
-            className="mb-1.5 block text-xs font-semibold text-gray-600"
+            className="mb-1.5 block text-xs font-medium text-gray-500"
           >
             Lokasi
           </label>
           <Select value={location} onValueChange={setLocation}>
             <SelectTrigger
               id="filter-location"
-              className="h-9 w-full rounded-lg border-0 bg-[#EFEFEF] text-xs text-gray-800"
+              className="h-10 w-full rounded-lg border border-gray-200/80 bg-white text-xs font-medium text-gray-900 shadow-xs hover:bg-gray-50"
             >
               <SelectValue placeholder="Pilih lokasi" />
             </SelectTrigger>
@@ -169,14 +168,14 @@ export default function FilterSidebar({
         <div>
           <label
             htmlFor="filter-sort"
-            className="mb-1.5 block text-xs font-semibold text-gray-600"
+            className="mb-1.5 block text-xs font-medium text-gray-500"
           >
             Urutkan berdasarkan
           </label>
           <Select value={sortBy} onValueChange={setSortBy}>
             <SelectTrigger
               id="filter-sort"
-              className="h-9 w-full rounded-lg border-0 bg-[#EFEFEF] text-xs text-gray-800"
+              className="h-10 w-full rounded-lg border border-gray-200/80 bg-white text-xs font-medium text-gray-900 shadow-xs hover:bg-gray-50"
             >
               <SelectValue placeholder="Urutkan" />
             </SelectTrigger>
@@ -191,26 +190,23 @@ export default function FilterSidebar({
           </Select>
         </div>
 
-        {hasActiveFilters && (
-          <button
-            type="button"
-            onClick={onReset}
-            className="inline-flex items-center gap-1.5 pt-1 text-xs font-medium text-gray-600 underline underline-offset-4 transition hover:text-black"
-          >
-            <RotateCcw className="h-3.5 w-3.5" />
-            Reset filter
-          </button>
-        )}
+        <button
+          type="button"
+          onClick={onReset}
+          className="inline-block pt-1 text-xs font-medium text-gray-700 underline underline-offset-4 transition hover:text-black"
+        >
+          Reset filter
+        </button>
       </div>
 
-      {/* Panduan Keamanan (sembunyikan di mobile kecuali filter dibuka agar feed langsung terlihat) */}
+      {/* Panduan Keamanan */}
       <div
         className={`${
           isMobileFilterOpen ? 'block' : 'hidden'
         } space-y-3 rounded-xl border border-gray-200/80 bg-white p-4 shadow-sm sm:p-5 lg:block`}
       >
-        <div className="flex items-center gap-2 text-sm font-semibold leading-tight text-black">
-          <TriangleAlert size={18} className="shrink-0 text-amber-600" />
+        <div className="flex items-center gap-2 text-sm font-bold leading-tight text-gray-900">
+          <TriangleAlert size={17} className="shrink-0 text-[#F05A00]" />
           <span>Panduan Singkat Keamanan</span>
         </div>
 
@@ -235,10 +231,9 @@ export default function FilterSidebar({
         <button
           type="button"
           onClick={() => setShowMoreGuide((prev) => !prev)}
-          className="inline-flex items-center gap-1 pt-1 text-xs font-semibold text-[#001994] hover:underline"
+          className="inline-flex items-center gap-1 pt-1 text-xs font-semibold text-[#0026FF] hover:underline"
         >
-          <span>{showMoreGuide ? 'Tutup panduan' : 'Selengkapnya'}</span>
-          {showMoreGuide ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+          <span>{showMoreGuide ? 'Tutup panduan' : 'Selengkapnya →'}</span>
         </button>
       </div>
     </aside>

@@ -1,7 +1,10 @@
 import { useEffect, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
+import { CalendarDays } from "lucide-react";
 import FileUploader from "../components/FileUploader";
+import { Calendar } from "@/components/ui/calendar";
 import { Input } from "@/components/ui/input";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
@@ -10,6 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { formatDateId } from "../lib/formatters";
 import {
   useCreatePostMutation,
   usePostDetailQuery,
@@ -94,6 +98,7 @@ export default function FormLaporan() {
     return editPost?.image ? [editPost.image] : [];
   });
   const [errors, setErrors] = useState({});
+  const [isDateOpen, setIsDateOpen] = useState(false);
 
   useEffect(() => {
     if (!editPost) return;
@@ -155,6 +160,7 @@ export default function FormLaporan() {
     });
 
     if (isEditMode) {
+      data.append("sync_images", "1");
       updatePost.mutate(
         { id: postId, payload: data },
         {
@@ -293,22 +299,43 @@ export default function FormLaporan() {
           {errorText("lokasi")}
         </div>
 
-        {/* Tanggal */}
+        {/* Tanggal (shadcn Calendar + Popover Date Picker) */}
         <div className="mb-4">
           <label htmlFor="tanggal" className="mb-1.5 block text-sm font-medium">
             {tema.labelTanggal}
           </label>
-          <Input
-            id="tanggal"
-            name="tanggal"
-            type="date"
-            max={new Date().toISOString().split("T")[0]}
-            value={form.tanggal}
-            onChange={handleChange}
-            className={`h-11 rounded-md border-0 bg-[#ebebeb] px-3.5 text-sm text-gray-900 ${
-              form.tanggal ? "" : "text-gray-400"
-            }`}
-          />
+          <Popover open={isDateOpen} onOpenChange={setIsDateOpen}>
+            <PopoverTrigger
+              id="tanggal"
+              className={`flex h-11 w-full items-center justify-between rounded-md border-0 bg-[#ebebeb] px-3.5 text-left text-sm transition hover:bg-[#e2e2e2] ${
+                form.tanggal ? "text-gray-900" : "text-gray-400"
+              }`}
+            >
+              <span>
+                {form.tanggal ? formatDateId(form.tanggal) : "Pilih tanggal"}
+              </span>
+              <CalendarDays className="h-4 w-4 text-gray-500" />
+            </PopoverTrigger>
+            <PopoverContent align="start" className="w-auto rounded-xl border border-gray-200 bg-white p-0 shadow-lg">
+              <Calendar
+                mode="single"
+                selected={
+                  form.tanggal ? new Date(`${form.tanggal}T00:00:00`) : undefined
+                }
+                onSelect={(date) => {
+                  if (!date) return;
+                  const yyyy = date.getFullYear();
+                  const mm = String(date.getMonth() + 1).padStart(2, "0");
+                  const dd = String(date.getDate()).padStart(2, "0");
+                  setForm((prev) => ({ ...prev, tanggal: `${yyyy}-${mm}-${dd}` }));
+                  if (errors.tanggal)
+                    setErrors((prev) => ({ ...prev, tanggal: undefined }));
+                  setIsDateOpen(false);
+                }}
+                disabled={{ after: new Date() }}
+              />
+            </PopoverContent>
+          </Popover>
           {errorText("tanggal")}
         </div>
 

@@ -251,30 +251,51 @@ export const postService = {
     }
   },
 
-  async getUserOpenPosts(userId) {
-    if (!userId) return []
+  async getTrashedPosts() {
+    if (USE_MOCK) {
+      return []
+    }
+
+    const res = await apiClient.get('/posts/trashed')
+    return extractList(res).map(normalizePost)
+  },
+
+  async restorePost(id) {
+    if (USE_MOCK) {
+      return { id }
+    }
+
+    const res = await apiClient.post(`/posts/${id}/restore`)
+    const payload = res?.data ?? res
+    return normalizePost(payload?.post ?? payload)
+  },
+
+  async getPublicUserProfile(userId) {
+    if (!userId) return { user: null, posts: [] }
 
     if (USE_MOCK) {
       await delay(220)
-      return mockPostsStore.filter(
+      const userPosts = mockPostsStore.filter(
         (p) => String(p.author?.id) === String(userId) && p.status !== 'selesai'
       )
+      return {
+        user: userPosts[0]?.author
+          ? { ...userPosts[0].author, email: null, whatsapp: null }
+          : null,
+        posts: userPosts,
+      }
     }
 
-    try {
-      const res = await apiClient.get('/posts', { params: { limit: 100 } })
-      return extractList(res)
-        .map(normalizePost)
-        .filter(
-          (p) => String(p.author?.id) === String(userId) && p.status !== 'selesai'
-        )
-    } catch (err) {
-      if (!err.status) {
-        return mockPostsStore.filter(
-          (p) => String(p.author?.id) === String(userId) && p.status !== 'selesai'
-        )
-      }
-      throw err
+    const res = await apiClient.get(`/users/${userId}`)
+    const data = res?.data ?? res
+    return {
+      user: data?.user ?? null,
+      posts: Array.isArray(data?.posts) ? data.posts.map(normalizePost) : [],
     }
+  },
+
+  async getUserOpenPosts(userId) {
+    const profile = await this.getPublicUserProfile(userId)
+    return profile.posts
   },
 }

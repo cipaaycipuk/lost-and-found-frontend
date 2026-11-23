@@ -1,6 +1,5 @@
-import { useEffect } from 'react'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
-import PostDetail from '../components/PostDetail'
+import PostDetailModal from '../components/PostDetailModal'
 import { usePostDetailQuery } from '../hooks/usePosts'
 import ErrorPage from './ErrorPage'
 
@@ -55,14 +54,6 @@ export default function PostDetailPage() {
     }
   }
 
-  useEffect(() => {
-    const onKeyDown = (e) => {
-      if (e.key === 'Escape') handleBack()
-    }
-    window.addEventListener('keydown', onKeyDown)
-    return () => window.removeEventListener('keydown', onKeyDown)
-  }, [])
-
   if (isLoading && !post) {
     return <DetailModalSkeleton onClose={handleBack} />
   }
@@ -78,17 +69,5 @@ export default function PostDetailPage() {
     )
   }
 
-  return (
-    <div
-      className="no-scrollbar fixed inset-0 z-50 overflow-y-auto overscroll-contain bg-black/70 px-3 py-6 backdrop-blur-[2px] sm:px-6 sm:py-10"
-      onClick={handleBack}
-    >
-      <div
-        className="mx-auto max-w-2xl"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <PostDetail post={post} onBack={handleBack} />
-      </div>
-    </div>
-  )
+  return <PostDetailModal post={post} onClose={handleBack} />
 }

@@ -1,13 +1,21 @@
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   MapPin,
   CalendarDays,
-  MessageSquare,
+  MessageSquareReply,
   Bookmark,
+  Phone,
+  X,
   CheckCircle2,
   MoreVertical,
+  Tag,
+  HandHeart,
+  Clock,
 } from 'lucide-react'
 import Avatar from './Avatar'
+import ClaimModal from './ClaimModal'
+import ConfirmDialog from './ConfirmDialog'
 import PostImageGrid from './PostImageGrid'
 import {
   DropdownMenu,
@@ -32,6 +40,10 @@ export default function PostCard({ post, isOwner = false, onSelect }) {
   const canManage =
     isOwner || (Boolean(user?.id) && String(user.id) === String(post.author?.id))
 
+  const [isImageOpen, setIsImageOpen] = useState(false)
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false)
+  const [claimModalOpen, setClaimModalOpen] = useState(false)
+
   const toggleBookmark = useToggleBookmarkMutation()
   const updateStatus = useUpdatePostStatusMutation()
   const deletePost = useDeletePostMutation()
@@ -54,20 +66,30 @@ export default function PostCard({ post, isOwner = false, onSelect }) {
     navigate(targetPath, { state: { author: post.author } })
   }
 
+  const waPhone =
+    post.myClaim?.status === 'accepted'
+      ? post.myClaim.owner_whatsapp || post.author?.whatsapp
+      : canManage
+        ? post.author?.whatsapp
+        : null
+
   const waUrl = formatWhatsAppUrl(
-    post.author?.whatsapp,
+    waPhone,
     `Halo ${post.author?.name || ''}, saya melihat laporan "${post.title}" di Lost & Found.`
   )
 
-  const sideBorderStyle = {
-    borderLeftWidth: '5px',
-    borderLeftColor: isKehilangan ? '#F05A00' : '#0026FF',
-  }
+  useEffect(() => {
+    if (!isImageOpen) return
+    const onKeyDown = (e) => {
+      if (e.key === 'Escape') setIsImageOpen(false)
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [isImageOpen])
 
   return (
     <article
       onClick={handleOpenPost}
-      style={sideBorderStyle}
       className={`cursor-pointer space-y-3.5 rounded-xl border border-gray-200/90 bg-white p-4 shadow-sm transition hover:border-gray-300 hover:shadow-md sm:space-y-4 sm:p-5 ${
         isDone ? 'opacity-85' : ''
       }`}
@@ -88,7 +110,7 @@ export default function PostCard({ post, isOwner = false, onSelect }) {
             <h3 className="truncate text-sm font-bold text-gray-900 group-hover/author:underline">
               {post.author?.name}
             </h3>
-            <p className="text-xs text-gray-400">{post.timeAgo}</p>
+            <p className="text-xs text-gray-500">{post.timeAgo}</p>
           </div>
         </div>
 
@@ -103,10 +125,10 @@ export default function PostCard({ post, isOwner = false, onSelect }) {
             </span>
           )}
           <span
-            className={`rounded-full px-3.5 py-1 text-xs font-bold ${
+            className={`rounded-full px-3 py-1 text-xs font-bold ${
               isKehilangan
-                ? 'bg-[#FCEEE3] text-[#F05A00]'
-                : 'bg-[#E2E6FF] text-[#0026FF]'
+                ? 'bg-[#FCEEE3] text-[#d95200]'
+                : 'bg-[#D8DEFF] text-[#001C99]'
             }`}
           >
             {post.typeLabel || (isKehilangan ? 'Kehilangan' : 'Ditemukan')}
@@ -152,7 +174,7 @@ export default function PostCard({ post, isOwner = false, onSelect }) {
                 <DropdownMenuItem
                   variant="destructive"
                   disabled={deletePost.isPending}
-                  onClick={() => deletePost.mutate(post.id)}
+                  onClick={() => setConfirmDeleteOpen(true)}
                   className="cursor-pointer rounded-lg px-3 py-2 text-sm font-medium"
                 >
                   Hapus
@@ -171,28 +193,29 @@ export default function PostCard({ post, isOwner = false, onSelect }) {
       />
 
       {/* Detail Konten */}
-      <div className="space-y-2.5">
+      <div className="space-y-3">
         <h2 className="text-base font-bold leading-snug text-gray-900 sm:text-lg">
           {post.title}
         </h2>
 
         <div className="flex flex-wrap gap-1.5 text-xs sm:gap-2">
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-gray-300 bg-[#EFEFEF] px-3 py-1 font-medium text-gray-500">
-            <MapPin size={13} className="text-gray-400" />
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-gray-200 bg-gray-50 px-2.5 py-1 font-medium text-gray-700 sm:px-3 sm:py-1.5">
+            <MapPin size={14} className="text-gray-500" />
             {post.location}
           </span>
 
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-gray-300 bg-[#EFEFEF] px-3 py-1 font-medium text-gray-500">
-            <CalendarDays size={13} className="text-gray-400" />
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-gray-200 bg-gray-50 px-2.5 py-1 font-medium text-gray-700 sm:px-3 sm:py-1.5">
+            <CalendarDays size={14} className="text-gray-500" />
             {post.date}
           </span>
 
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-gray-300 bg-[#EFEFEF] px-3 py-1 font-medium text-gray-500">
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-gray-200 bg-gray-50 px-2.5 py-1 font-medium text-gray-700 sm:px-3 sm:py-1.5">
+            <Tag size={14} className="text-gray-500" />
             {post.category}
           </span>
         </div>
 
-        <p className="line-clamp-3 text-sm leading-relaxed text-gray-800">
+        <p className="line-clamp-3 text-sm leading-relaxed text-gray-600">
           {post.description}
         </p>
       </div>
@@ -200,15 +223,15 @@ export default function PostCard({ post, isOwner = false, onSelect }) {
       {/* Footer Post */}
       <div
         onClick={(e) => e.stopPropagation()}
-        className="flex flex-wrap items-center justify-between gap-3 border-t border-gray-200 pt-3"
+        className="flex flex-wrap items-center justify-between gap-3 border-t border-gray-100 pt-3"
       >
-        <div className="flex items-center gap-4 text-xs font-medium text-gray-400 sm:gap-5 sm:text-sm">
+        <div className="flex items-center gap-4 text-sm font-medium text-gray-500 sm:gap-5">
           <button
             type="button"
             onClick={handleOpenPost}
-            className="flex min-h-[36px] items-center gap-1.5 transition hover:text-gray-900"
+            className="flex min-h-[36px] items-center gap-1.5 transition hover:text-black"
           >
-            <MessageSquare size={16} />
+            <MessageSquareReply size={18} />
             <span className="tabular-nums">{post.commentsCount || 0}</span>
           </button>
 
@@ -217,29 +240,102 @@ export default function PostCard({ post, isOwner = false, onSelect }) {
             disabled={toggleBookmark.isPending}
             onClick={() => toggleBookmark.mutate(post.id)}
             className={`flex min-h-[36px] items-center gap-1.5 transition ${
-              post.isSaved ? 'font-semibold text-[#F05A00]' : 'hover:text-gray-900'
+              post.isSaved ? 'font-semibold text-[#e0531c]' : 'hover:text-black'
             }`}
           >
             <Bookmark
-              size={16}
-              className={post.isSaved ? 'fill-[#F05A00]' : ''}
+              size={18}
+              className={post.isSaved ? 'fill-[#e0531c]' : ''}
             />
             <span>{post.isSaved ? 'Tersimpan' : 'Simpan'}</span>
           </button>
         </div>
 
-        {waUrl && (
-          <a
-            href={waUrl}
-            target="_blank"
-            rel="noreferrer"
-            className="inline-flex min-h-[36px] items-center gap-2 rounded-full bg-[#1C1C1C] px-4 py-2 text-xs font-semibold text-white transition hover:bg-neutral-800"
-          >
-            <MessageSquare size={14} />
-            Hubungi Whatsapp
-          </a>
+        {!canManage && !isDone && (
+          post.myClaim?.status === 'accepted' && waUrl ? (
+            <a
+              href={waUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex min-h-[36px] items-center gap-2 rounded-full bg-emerald-600 px-3.5 py-2 text-xs font-semibold text-white transition hover:bg-emerald-700 sm:px-4 sm:text-sm"
+            >
+              <Phone size={15} />
+              Hubungi WhatsApp
+            </a>
+          ) : post.myClaim?.status === 'pending' ? (
+            <span className="inline-flex min-h-[36px] items-center gap-1.5 rounded-full bg-amber-50 px-3.5 py-2 text-xs font-semibold text-amber-800">
+              <Clock size={14} />
+              Klaim Menunggu Konfirmasi
+            </span>
+          ) : (
+            <button
+              type="button"
+              onClick={() => {
+                if (!user) {
+                  navigate('/login')
+                  return
+                }
+                setClaimModalOpen(true)
+              }}
+              className="inline-flex min-h-[36px] items-center gap-2 rounded-full bg-[#232323] px-3.5 py-2 text-xs font-semibold text-white transition hover:bg-neutral-800 sm:px-4 sm:text-sm"
+            >
+              <HandHeart size={15} />
+              {post.reportMeta?.claim_action_label ||
+                (isKehilangan ? 'Saya Menemukan Ini' : 'Ajukan Klaim')}
+            </button>
+          )
         )}
       </div>
+
+      <ClaimModal
+        open={claimModalOpen}
+        post={post}
+        onClose={() => setClaimModalOpen(false)}
+      />
+
+      <ConfirmDialog
+        open={confirmDeleteOpen}
+        title="Yakin Hapus Laporan?"
+        description={`Laporan "${post.title}" akan dipindahkan ke sampah dan masih bisa dipulihkan kembali dari halaman Profil.`}
+        confirmLabel="Ya, Hapus"
+        loading={deletePost.isPending}
+        onConfirm={() =>
+          deletePost.mutate(post.id, {
+            onSuccess: () => setConfirmDeleteOpen(false),
+          })
+        }
+        onCancel={() => setConfirmDeleteOpen(false)}
+      />
+
+      {/* Lightbox */}
+      {isImageOpen && (
+        <div
+          className="fixed inset-0 z-[999] flex items-center justify-center bg-black/90 p-4"
+          onClick={(e) => {
+            e.stopPropagation()
+            setIsImageOpen(false)
+          }}
+        >
+          <button
+            type="button"
+            aria-label="Tutup pratinjau gambar"
+            onClick={(e) => {
+              e.stopPropagation()
+              setIsImageOpen(false)
+            }}
+            className="absolute right-5 top-5 rounded-full bg-white/10 p-2 text-white transition hover:bg-white/20"
+          >
+            <X size={24} />
+          </button>
+
+          <img
+            src={post.image}
+            alt={post.title}
+            onClick={(e) => e.stopPropagation()}
+            className="max-h-[90vh] max-w-[95vw] rounded-lg object-contain"
+          />
+        </div>
+      )}
     </article>
   )
 }

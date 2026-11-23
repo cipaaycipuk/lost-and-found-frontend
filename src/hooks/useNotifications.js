@@ -1,14 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useAuth } from '../context/AuthContext'
+import { toast } from 'sonner'
 import { notificationService } from '../services/notificationService'
 
 export function useNotificationsQuery() {
-  const { isAuthenticated } = useAuth()
   return useQuery({
     queryKey: ['notifications'],
     queryFn: () => notificationService.getNotifications(),
-    enabled: isAuthenticated,
-    staleTime: 1000 * 60,
   })
 }
 
@@ -16,7 +13,15 @@ export function useMarkNotificationReadMutation() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: (id) => notificationService.markAsRead(id),
-    onSuccess: () => {
+    onMutate: async (id) => {
+      await queryClient.cancelQueries({ queryKey: ['notifications'] })
+      queryClient.setQueryData(['notifications'], (old) =>
+        Array.isArray(old)
+          ? old.map((n) => (String(n.id) === String(id) ? { ...n, isRead: true } : n))
+          : old
+      )
+    },
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['notifications'] })
     },
   })
@@ -26,7 +31,19 @@ export function useMarkAllNotificationsReadMutation() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: () => notificationService.markAllAsRead(),
+    onMutate: async () => {
+      await queryClient.cancelQueries({ queryKey: ['notifications'] })
+      queryClient.setQueryData(['notifications'], (old) =>
+        Array.isArray(old) ? old.map((n) => ({ ...n, isRead: true })) : old
+      )
+    },
     onSuccess: () => {
+      toast.success('Semua notifikasi ditandai sudah dibaca.')
+    },
+    onError: (err) => {
+      toast.error(err?.message || 'Gagal menandai notifikasi.')
+    },
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['notifications'] })
     },
   })

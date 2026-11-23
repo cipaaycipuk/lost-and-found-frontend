@@ -19,6 +19,17 @@ body,
   -webkit-font-smoothing: antialiased;
 }
 
+html,
+body {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+html::-webkit-scrollbar,
+body::-webkit-scrollbar {
+  display: none;
+}
+
 ::selection {
   background-color: #fceee3;
   color: #c84615;
