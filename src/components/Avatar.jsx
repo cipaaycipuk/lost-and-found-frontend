@@ -19,7 +19,7 @@ export default function Avatar({ src, name = '', className = '' }) {
       aria-label={name}
       className={`flex items-center justify-center rounded-full bg-neutral-300 font-semibold text-neutral-600 ${className}`}
     >
-      {initials}
+      {initials} 
     </div>
   )
 }
