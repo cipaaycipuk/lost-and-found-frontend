@@ -767,7 +767,7 @@ export default function Profile() {
         }
         subDescription={
           claimConfirm?.status === 'accepted'
-            ? 'Pengajuan lain pada laporan ini otomatis ditolak. Pastikan sudah dikonfirmasi lewat WhatsApp sebelum melanjutkan.'
+            ? 'Pengajuan lain pada laporan ini otomatis ditolak. Selanjutkan lakukan konfirmasi melalui WhatsApp'
             : 'Pengguna tidak dapat mengakses kontak WhatsApp Anda setelah pengajuan ditolak.'
         }
         confirmLabel={

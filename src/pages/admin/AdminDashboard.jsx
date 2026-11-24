@@ -404,7 +404,6 @@ export default function AdminDashboard() {
   return (
     <div className="min-h-screen bg-[#f5f5f5] text-[#171717]">
       <div className="mx-auto flex min-h-[calc(100vh-56px)] max-w-[1600px] flex-col md:flex-row">
-
         <main className="min-w-0 flex-1 px-4 py-6 sm:px-6 lg:px-8">
           <div className="mb-5">
             <h1 className="text-2xl font-bold tracking-tight">
@@ -426,10 +425,10 @@ export default function AdminDashboard() {
           </section>
 
           <section>
-            <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+            <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
               <div>
                 <h2 className="text-xl font-semibold">Preview</h2>
-                <p className="text-xs text-muted-foreground">
+                <p className="text-sm text-muted-foreground">
                   Kelola data laporan, pengguna, dan pengajuan klaim.
                 </p>
               </div>
@@ -449,16 +448,30 @@ export default function AdminDashboard() {
               onValueChange={setActiveTab}
               className="w-full"
             >
-              <TabsList className="h-auto w-full justify-start gap-5 rounded-none border-b border-border bg-transparent p-0">
-                {Object.entries(tabLabel).map(([value, label]) => (
-                  <TabsTrigger
-                    key={value}
-                    value={value}
-                    className="rounded-none border-b-2 border-transparent px-0 pb-3 pt-1 text-xs text-muted-foreground shadow-none data-[state=active]:border-[#f47721] data-[state=active]:bg-transparent data-[state=active]:font-semibold data-[state=active]:text-foreground data-[state=active]:shadow-none"
-                  >
-                    {label}
-                  </TabsTrigger>
-                ))}
+              <TabsList className="h-auto w-full justify-start gap-5 rounded-none border-b border-border bg-transparent p-0 shadow-none">
+                {Object.entries(tabLabel).map(([value, label]) => {
+                  const isActive = activeTab === value;
+
+                  return (
+                    <TabsTrigger
+                      key={value}
+                      value={value}
+                      style={{
+                        backgroundColor: "transparent",
+                        boxShadow: "none",
+                        color: isActive ? "#171717" : "#737373",
+                        fontWeight: isActive ? 700 : 400,
+                        borderBottom: isActive
+                          ? "2px solid #171717"
+                          : "2px solid transparent",
+                        borderRadius: 0,
+                      }}
+                      className="flex-none rounded-none px-0 pb-3 pt-1 text-md shadow-none"
+                    >
+                      {label}
+                    </TabsTrigger>
+                  );
+                })}
               </TabsList>
 
               <div className="mt-3 overflow-hidden rounded-xl border bg-white shadow-sm">

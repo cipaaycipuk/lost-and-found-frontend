@@ -11,7 +11,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import AdminNavbar from "@/components/AdminNavbar";
 
 const initialClaims = [
   {

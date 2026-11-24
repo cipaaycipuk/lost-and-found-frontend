@@ -1,37 +1,34 @@
-import { useState } from 'react'
-import {
-  TriangleAlert,
-  ArrowRight,
-  ChevronDown,
-  Filter,
-} from 'lucide-react'
+
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { TriangleAlert, ArrowRight, ChevronDown, Filter } from "lucide-react";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select'
+} from "@/components/ui/select";
 
 const CATEGORIES = [
-  'Semua kategori',
-  'Elektronik',
-  'Dompet & Tas',
-  'Kunci',
-  'Dokumen & Kartu',
-  'Pakaian & Aksesoris',
-  'Buku & Alat Tulis',
-  'Lainnya',
-]
+  "Semua kategori",
+  "Elektronik",
+  "Dompet & Tas",
+  "Kunci",
+  "Dokumen & Kartu",
+  "Pakaian & Aksesoris",
+  "Buku & Alat Tulis",
+  "Lainnya",
+];
 
 const LOCATIONS = [
-  'Semua',
-  'Foodcourt / Kantin',
-  'Gedung A',
-  'Gedung B',
-  'Perpustakaan',
-  'Area Parkir',
-]
+  "Semua",
+  "Foodcourt / Kantin",
+  "Gedung A",
+  "Gedung B",
+  "Perpustakaan",
+  "Area Parkir",
+];
 
 export default function FilterSidebar({
   activeTab,
@@ -44,55 +41,39 @@ export default function FilterSidebar({
   setSortBy,
   onReset,
 }) {
-  const [showMoreGuide, setShowMoreGuide] = useState(false)
-  const [isMobileGuideOpen, setIsMobileGuideOpen] = useState(false)
-  const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false)
+  const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false);
+
+  const navigate = useNavigate();
 
   const activeFilterCount =
-    (category !== 'Semua kategori' ? 1 : 0) +
-    (location !== 'Semua' ? 1 : 0) +
-    (sortBy !== 'Terbaru' ? 1 : 0)
+    (category !== "Semua kategori" ? 1 : 0) +
+    (location !== "Semua" ? 1 : 0) +
+    (sortBy !== "Terbaru" ? 1 : 0);
 
   return (
     <aside className="space-y-3 lg:sticky lg:top-24 lg:col-span-4 lg:space-y-5">
       {/* === MOBILE (< lg) === */}
       <div className="space-y-3 lg:hidden">
-        {/* 1. Panduan Singkat Keamanan (Compact Mobile Banner) */}
+        {/* 1. Panduan Singkat Keamanan */}
         <div className="rounded-xl border border-gray-200/80 bg-white shadow-xs">
           <button
             type="button"
-            onClick={() => setIsMobileGuideOpen((prev) => !prev)}
+            onClick={() => navigate("/panduan")}
             className="flex w-full items-center justify-between px-4 py-3 text-left"
           >
             <span className="flex items-center gap-2 text-xs font-semibold text-gray-900">
               <TriangleAlert size={16} className="shrink-0 text-[#F05A00]" />
               Panduan Singkat Keamanan
             </span>
-            <ArrowRight
-              size={15}
-              className={`text-gray-500 transition-transform ${
-                isMobileGuideOpen ? 'rotate-90' : ''
-              }`}
-            />
+            <ArrowRight size={15} className="text-gray-500" />
           </button>
-
-          {isMobileGuideOpen && (
-            <ul className="list-disc space-y-1.5 border-t border-gray-100 px-8 py-3 text-xs leading-relaxed text-gray-700">
-              <li>Jangan tulis info pribadi (PIN, nomor KTM) di deskripsi.</li>
-              <li>Minta pemilik menyebut ciri barang sebelum menyerahkan.</li>
-              <li>Bertemu di tempat ramai di area kampus.</li>
-              <li>
-                Untuk barang berharga, titipkan di pos satpam atau bagian
-                kemahasiswaan terdekat.
-              </li>
-            </ul>
-          )}
         </div>
 
         {/* 2. Tabs Horizontal Underline: Semua | Kehilangan | Ditemukan */}
         <div className="grid grid-cols-3 border-b border-gray-200">
-          {['Semua', 'Kehilangan', 'Ditemukan'].map((tab) => {
-            const isActive = activeTab === tab
+          {["Semua", "Kehilangan", "Ditemukan"].map((tab) => {
+            const isActive = activeTab === tab;
+
             return (
               <button
                 key={tab}
@@ -100,13 +81,13 @@ export default function FilterSidebar({
                 onClick={() => setActiveTab(tab)}
                 className={`-mb-px border-b-2 pb-2.5 text-center text-xs font-semibold transition ${
                   isActive
-                    ? 'border-black text-black'
-                    : 'border-transparent text-gray-400 hover:text-gray-700'
+                    ? "border-black text-black"
+                    : "border-transparent text-gray-400 hover:text-gray-700"
                 }`}
               >
                 {tab}
               </button>
-            )
+            );
           })}
         </div>
 
@@ -119,6 +100,7 @@ export default function FilterSidebar({
           >
             <Filter size={13} />
             <span>Filter</span>
+
             {activeFilterCount > 0 && (
               <span className="rounded-full bg-[#e0531c] px-1.5 py-0.5 text-[10px] font-bold text-white tabular-nums">
                 {activeFilterCount}
@@ -129,7 +111,9 @@ export default function FilterSidebar({
           <button
             type="button"
             onClick={() =>
-              setSortBy((prev) => (prev === 'Terbaru' ? 'Terlama' : 'Terbaru'))
+              setSortBy((prev) =>
+                prev === "Terbaru" ? "Terlama" : "Terbaru"
+              )
             }
             className="inline-flex items-center gap-1 text-xs font-medium text-gray-700"
           >
@@ -151,6 +135,7 @@ export default function FilterSidebar({
           >
             <div className="flex items-center justify-between">
               <h3 className="text-base font-bold text-gray-900">Filter</h3>
+
               <button
                 type="button"
                 onClick={onReset}
@@ -165,13 +150,19 @@ export default function FilterSidebar({
                 <label className="mb-1.5 block text-xs font-medium text-gray-600">
                   Kategori
                 </label>
+
                 <Select value={category} onValueChange={setCategory}>
                   <SelectTrigger className="h-10 w-full rounded-lg border border-gray-200 bg-white text-xs font-medium text-gray-900">
                     <SelectValue placeholder="Pilih kategori" />
                   </SelectTrigger>
+
                   <SelectContent>
                     {CATEGORIES.map((item) => (
-                      <SelectItem key={item} value={item} className="text-xs">
+                      <SelectItem
+                        key={item}
+                        value={item}
+                        className="text-xs"
+                      >
                         {item}
                       </SelectItem>
                     ))}
@@ -183,13 +174,19 @@ export default function FilterSidebar({
                 <label className="mb-1.5 block text-xs font-medium text-gray-600">
                   Lokasi
                 </label>
+
                 <Select value={location} onValueChange={setLocation}>
                   <SelectTrigger className="h-10 w-full rounded-lg border border-gray-200 bg-white text-xs font-medium text-gray-900">
                     <SelectValue placeholder="Pilih lokasi" />
                   </SelectTrigger>
+
                   <SelectContent>
                     {LOCATIONS.map((loc) => (
-                      <SelectItem key={loc} value={loc} className="text-xs">
+                      <SelectItem
+                        key={loc}
+                        value={loc}
+                        className="text-xs"
+                      >
                         {loc}
                       </SelectItem>
                     ))}
@@ -201,14 +198,17 @@ export default function FilterSidebar({
                 <label className="mb-1.5 block text-xs font-medium text-gray-600">
                   Urutkan
                 </label>
+
                 <Select value={sortBy} onValueChange={setSortBy}>
                   <SelectTrigger className="h-10 w-full rounded-lg border border-gray-200 bg-white text-xs font-medium text-gray-900">
                     <SelectValue placeholder="Urutkan" />
                   </SelectTrigger>
+
                   <SelectContent>
                     <SelectItem value="Terbaru" className="text-xs">
                       Terbaru
                     </SelectItem>
+
                     <SelectItem value="Terlama" className="text-xs">
                       Terlama
                     </SelectItem>
@@ -236,15 +236,15 @@ export default function FilterSidebar({
           </label>
 
           <div className="flex gap-1 rounded-xl border border-gray-200/80 bg-white p-1 shadow-xs">
-            {['Semua', 'Kehilangan', 'Ditemukan'].map((tab) => (
+            {["Semua", "Kehilangan", "Ditemukan"].map((tab) => (
               <button
                 key={tab}
                 type="button"
                 onClick={() => setActiveTab(tab)}
                 className={`flex-1 rounded-lg py-1.5 text-xs font-semibold transition ${
                   activeTab === tab
-                    ? 'bg-[#1C1C1C] text-white shadow-xs'
-                    : 'text-gray-700 hover:text-black'
+                    ? "bg-[#1C1C1C] text-white shadow-xs"
+                    : "text-gray-700 hover:text-black"
                 }`}
               >
                 {tab}
@@ -260,6 +260,7 @@ export default function FilterSidebar({
           >
             Kategori
           </label>
+
           <Select value={category} onValueChange={setCategory}>
             <SelectTrigger
               id="filter-category"
@@ -267,6 +268,7 @@ export default function FilterSidebar({
             >
               <SelectValue placeholder="Pilih kategori" />
             </SelectTrigger>
+
             <SelectContent>
               {CATEGORIES.map((item) => (
                 <SelectItem key={item} value={item} className="text-xs">
@@ -284,6 +286,7 @@ export default function FilterSidebar({
           >
             Lokasi
           </label>
+
           <Select value={location} onValueChange={setLocation}>
             <SelectTrigger
               id="filter-location"
@@ -291,6 +294,7 @@ export default function FilterSidebar({
             >
               <SelectValue placeholder="Pilih lokasi" />
             </SelectTrigger>
+
             <SelectContent>
               {LOCATIONS.map((loc) => (
                 <SelectItem key={loc} value={loc} className="text-xs">
@@ -308,6 +312,7 @@ export default function FilterSidebar({
           >
             Urutkan berdasarkan
           </label>
+
           <Select value={sortBy} onValueChange={setSortBy}>
             <SelectTrigger
               id="filter-sort"
@@ -315,10 +320,12 @@ export default function FilterSidebar({
             >
               <SelectValue placeholder="Urutkan" />
             </SelectTrigger>
+
             <SelectContent>
               <SelectItem value="Terbaru" className="text-xs">
                 Terbaru
               </SelectItem>
+
               <SelectItem value="Terlama" className="text-xs">
                 Terlama
               </SelectItem>
@@ -346,28 +353,16 @@ export default function FilterSidebar({
           <li>Jangan tulis info pribadi (PIN, nomor KTM) di deskripsi.</li>
           <li>Minta pemilik menyebut ciri barang sebelum menyerahkan.</li>
           <li>Bertemu di tempat ramai di area kampus.</li>
-          {showMoreGuide && (
-            <>
-              <li>
-                Untuk barang berharga, titipkan di pos satpam atau bagian
-                kemahasiswaan terdekat.
-              </li>
-              <li>
-                Tandai laporan sebagai <strong>Selesai</strong> setelah barang
-                berhasil dikembalikan.
-              </li>
-            </>
-          )}
         </ul>
 
         <button
           type="button"
-          onClick={() => setShowMoreGuide((prev) => !prev)}
+          onClick={() => navigate("/panduan")}
           className="inline-flex items-center gap-1 pt-1 text-xs font-semibold text-[#0026FF] hover:underline"
         >
-          <span>{showMoreGuide ? 'Tutup panduan' : 'Selengkapnya →'}</span>
+          <span>Selengkapnya →</span>
         </button>
       </div>
     </aside>
-  )
+  );
 }
