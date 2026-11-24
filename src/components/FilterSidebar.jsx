@@ -30,6 +30,78 @@ const LOCATIONS = [
   "Area Parkir",
 ];
 
+function FilterSelectFields({
+  idPrefix,
+  category,
+  setCategory,
+  location,
+  setLocation,
+  sortBy,
+  setSortBy,
+  sortLabel = "Urutkan",
+  labelClassName = "mb-1.5 block text-xs font-medium text-gray-600",
+  triggerClassName = "h-10 w-full rounded-lg border border-gray-200/80 bg-white text-xs font-medium text-gray-900 shadow-xs hover:bg-gray-50",
+}) {
+  return (
+    <>
+      <div>
+        <label htmlFor={`${idPrefix}-category`} className={labelClassName}>
+          Kategori
+        </label>
+        <Select value={category} onValueChange={setCategory}>
+          <SelectTrigger id={`${idPrefix}-category`} className={triggerClassName}>
+            <SelectValue placeholder="Pilih kategori" />
+          </SelectTrigger>
+          <SelectContent>
+            {CATEGORIES.map((item) => (
+              <SelectItem key={item} value={item} className="text-xs">
+                {item}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div>
+        <label htmlFor={`${idPrefix}-location`} className={labelClassName}>
+          Lokasi
+        </label>
+        <Select value={location} onValueChange={setLocation}>
+          <SelectTrigger id={`${idPrefix}-location`} className={triggerClassName}>
+            <SelectValue placeholder="Pilih lokasi" />
+          </SelectTrigger>
+          <SelectContent>
+            {LOCATIONS.map((loc) => (
+              <SelectItem key={loc} value={loc} className="text-xs">
+                {loc}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div>
+        <label htmlFor={`${idPrefix}-sort`} className={labelClassName}>
+          {sortLabel}
+        </label>
+        <Select value={sortBy} onValueChange={setSortBy}>
+          <SelectTrigger id={`${idPrefix}-sort`} className={triggerClassName}>
+            <SelectValue placeholder="Urutkan" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="Terbaru" className="text-xs">
+              Terbaru
+            </SelectItem>
+            <SelectItem value="Terlama" className="text-xs">
+              Terlama
+            </SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+    </>
+  );
+}
+
 export default function FilterSidebar({
   activeTab,
   setActiveTab,
@@ -149,75 +221,15 @@ export default function FilterSidebar({
             </div>
 
             <div className="space-y-3">
-              <div>
-                <label className="mb-1.5 block text-xs font-medium text-gray-600">
-                  Kategori
-                </label>
-
-                <Select value={category} onValueChange={setCategory}>
-                  <SelectTrigger className="h-10 w-full rounded-lg border border-gray-200 bg-white text-xs font-medium text-gray-900">
-                    <SelectValue placeholder="Pilih kategori" />
-                  </SelectTrigger>
-
-                  <SelectContent>
-                    {CATEGORIES.map((item) => (
-                      <SelectItem
-                        key={item}
-                        value={item}
-                        className="text-xs"
-                      >
-                        {item}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div>
-                <label className="mb-1.5 block text-xs font-medium text-gray-600">
-                  Lokasi
-                </label>
-
-                <Select value={location} onValueChange={setLocation}>
-                  <SelectTrigger className="h-10 w-full rounded-lg border border-gray-200 bg-white text-xs font-medium text-gray-900">
-                    <SelectValue placeholder="Pilih lokasi" />
-                  </SelectTrigger>
-
-                  <SelectContent>
-                    {LOCATIONS.map((loc) => (
-                      <SelectItem
-                        key={loc}
-                        value={loc}
-                        className="text-xs"
-                      >
-                        {loc}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div>
-                <label className="mb-1.5 block text-xs font-medium text-gray-600">
-                  Urutkan
-                </label>
-
-                <Select value={sortBy} onValueChange={setSortBy}>
-                  <SelectTrigger className="h-10 w-full rounded-lg border border-gray-200 bg-white text-xs font-medium text-gray-900">
-                    <SelectValue placeholder="Urutkan" />
-                  </SelectTrigger>
-
-                  <SelectContent>
-                    <SelectItem value="Terbaru" className="text-xs">
-                      Terbaru
-                    </SelectItem>
-
-                    <SelectItem value="Terlama" className="text-xs">
-                      Terlama
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+              <FilterSelectFields
+                idPrefix="mobile-filter"
+                category={category}
+                setCategory={setCategory}
+                location={location}
+                setLocation={setLocation}
+                sortBy={sortBy}
+                setSortBy={setSortBy}
+              />
             </div>
 
             <button
@@ -232,13 +244,13 @@ export default function FilterSidebar({
       )}
 
       {/* === DESKTOP (lg+) === */}
-      <div className="hidden space-y-4 lg:block">
+      <div className="hidden space-y-4 rounded-xl border border-gray-200/80 bg-white p-5 shadow-sm lg:block">
         <div>
           <label className="mb-2 block text-xs font-medium text-gray-500">
             Jenis Laporan
           </label>
 
-          <div className="flex gap-1 rounded-xl border border-gray-200/80 bg-white p-1 shadow-xs">
+          <div className="flex gap-1 rounded-xl border border-gray-200/80 bg-gray-100/70 p-1">
             {["Semua", "Kehilangan", "Ditemukan"].map((tab) => (
               <button
                 key={tab}
@@ -256,85 +268,17 @@ export default function FilterSidebar({
           </div>
         </div>
 
-        <div>
-          <label
-            htmlFor="filter-category"
-            className="mb-1.5 block text-xs font-medium text-gray-500"
-          >
-            Kategori
-          </label>
-
-          <Select value={category} onValueChange={setCategory}>
-            <SelectTrigger
-              id="filter-category"
-              className="h-10 w-full rounded-lg border border-gray-200/80 bg-white text-xs font-medium text-gray-900 shadow-xs hover:bg-gray-50"
-            >
-              <SelectValue placeholder="Pilih kategori" />
-            </SelectTrigger>
-
-            <SelectContent>
-              {CATEGORIES.map((item) => (
-                <SelectItem key={item} value={item} className="text-xs">
-                  {item}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        <div>
-          <label
-            htmlFor="filter-location"
-            className="mb-1.5 block text-xs font-medium text-gray-500"
-          >
-            Lokasi
-          </label>
-
-          <Select value={location} onValueChange={setLocation}>
-            <SelectTrigger
-              id="filter-location"
-              className="h-10 w-full rounded-lg border border-gray-200/80 bg-white text-xs font-medium text-gray-900 shadow-xs hover:bg-gray-50"
-            >
-              <SelectValue placeholder="Pilih lokasi" />
-            </SelectTrigger>
-
-            <SelectContent>
-              {LOCATIONS.map((loc) => (
-                <SelectItem key={loc} value={loc} className="text-xs">
-                  {loc}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        <div>
-          <label
-            htmlFor="filter-sort"
-            className="mb-1.5 block text-xs font-medium text-gray-500"
-          >
-            Urutkan berdasarkan
-          </label>
-
-          <Select value={sortBy} onValueChange={setSortBy}>
-            <SelectTrigger
-              id="filter-sort"
-              className="h-10 w-full rounded-lg border border-gray-200/80 bg-white text-xs font-medium text-gray-900 shadow-xs hover:bg-gray-50"
-            >
-              <SelectValue placeholder="Urutkan" />
-            </SelectTrigger>
-
-            <SelectContent>
-              <SelectItem value="Terbaru" className="text-xs">
-                Terbaru
-              </SelectItem>
-
-              <SelectItem value="Terlama" className="text-xs">
-                Terlama
-              </SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
+        <FilterSelectFields
+          idPrefix="filter"
+          category={category}
+          setCategory={setCategory}
+          location={location}
+          setLocation={setLocation}
+          sortBy={sortBy}
+          setSortBy={setSortBy}
+          sortLabel="Urutkan berdasarkan"
+          labelClassName="mb-1.5 block text-xs font-medium text-gray-500"
+        />
 
         <button
           type="button"
