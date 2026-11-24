@@ -1,17 +1,10 @@
-import { useMemo, useState } from "react";
-import {
-  Search,
-  Users,
-  Package,
-  CheckCircle2,
-  Trash2,
-  Eye,
-} from "lucide-react";
+import { useMemo, useState, useEffect } from "react";
+import { adminService } from "@/services/adminService";
+import { Users, Package, CheckCircle2, Trash2, Eye } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import {
   Table,
   TableBody,
@@ -168,14 +161,6 @@ const claims = [
     submitted: "2 jam yang lalu",
     status: "Diterima",
   },
-];
-
-const stats = [
-  { label: "Total laporan", value: "128", icon: Package },
-  { label: "Kehilangan", value: "74", dot: "bg-orange-500" },
-  { label: "Ditemukan", value: "54", dot: "bg-blue-600" },
-  { label: "Selesai", value: "31", icon: CheckCircle2 },
-  { label: "Pengguna terdaftar", value: "212", icon: Users },
 ];
 
 function StatCard({ item }) {
@@ -390,7 +375,51 @@ function ClaimsTable() {
 
 export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState("posts");
-  const [search, setSearch] = useState("");
+  const [stats, setStats] = useState(null);
+  const [loadingStats, setLoadingStats] = useState(null);
+
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const response = await adminService.getStats();
+        setStats(response.data);
+      } catch (error) {
+        console.error("Gagal mengambil statistik:", error);
+      } finally {
+        setLoadingStats(false);
+      }
+    };
+
+    fetchStats();
+  }, []);
+
+  const statItems = [
+    {
+      label: "Total laporan",
+      value: stats?.posts_total ?? "—",
+      icon: Package,
+    },
+    {
+      label: "Kehilangan",
+      value: "—",
+      dot: "bg-orange-500",
+    },
+    {
+      label: "Ditemukan",
+      value: "—",
+      dot: "bg-blue-600",
+    },
+    {
+      label: "Selesai",
+      value: stats?.posts_resolved ?? "—",
+      icon: CheckCircle2,
+    },
+    {
+      label: "Pengguna terdaftar",
+      value: stats?.users_total ?? "—",
+      icon: Users,
+    },
+  ];
 
   const tabLabel = useMemo(
     () => ({
@@ -419,9 +448,13 @@ export default function AdminDashboard() {
             aria-label="Ringkasan statistik"
             className="mb-7 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5"
           >
-            {stats.map((item) => (
-              <StatCard key={item.label} item={item} />
-            ))}
+            {loadingStats ? (
+              <p className="col-span-full text-sm text-muted-foreground">
+                Memuat statistik...
+              </p>
+            ) : (
+              statItems.map((item) => <StatCard key={item.label} item={item} />)
+            )}
           </section>
 
           <section>
@@ -431,15 +464,6 @@ export default function AdminDashboard() {
                 <p className="text-sm text-muted-foreground">
                   Kelola data laporan, pengguna, dan pengajuan klaim.
                 </p>
-              </div>
-              <div className="relative w-full sm:max-w-xs">
-                <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Cari pada tabel..."
-                  className="h-9 bg-white pl-9 text-sm"
-                />
               </div>
             </div>
 
@@ -466,7 +490,7 @@ export default function AdminDashboard() {
                           : "2px solid transparent",
                         borderRadius: 0,
                       }}
-                      className="flex-none rounded-none px-0 pb-3 pt-1 text-md shadow-none"
+                      className="flex-none rounded-none px-0 pb-3 pt-1 text-sm shadow-none"
                     >
                       {label}
                     </TabsTrigger>
