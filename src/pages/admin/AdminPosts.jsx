@@ -1,7 +1,8 @@
-import { useMemo, useState } from "react";
+
+import { useMemo, useState, useEffect } from "react";
 import { Search, Image as ImageIcon } from "lucide-react";
 
-import ConfirmDialog from "../../components/ConfirmDialog";
+import { adminService } from "@/services/adminService";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,61 +15,31 @@ import {
   TableRow,
 } from "@/components/ui/table";
 
-const posts = [
-  {
-    id: 1,
-    title: "Tumbler minum leopard",
-    description: "Motif leopard dengan gagang, hilang di area kampus",
-    reporter: "Salsa R.",
-    type: "Kehilangan",
-    category: "Lainnya",
-    date: "4 Nov 2026",
-    status: "Open",
-  },
-  {
-    id: 2,
-    title: "Handphone casing pink",
-    description: "Ditemukan di depan perpustakaan",
-    reporter: "Dimas A.",
-    type: "Ditemukan",
-    category: "Elektronik",
-    date: "4 Nov 2026",
-    status: "Open",
-  },
-  {
-    id: 3,
-    title: "Promo jasa joki tugas",
-    description: "Hubungi WA untuk informasi lebih lanjut",
-    reporter: "Akun Baru",
-    type: "Kehilangan",
-    category: "Lainnya",
-    date: "3 Nov 2026",
-    status: "Open",
-  },
-  {
-    id: 4,
-    title: "Kunci motor Honda",
-    description: "Gantungan kunci hitam, hilang di parkiran",
-    reporter: "Raka P.",
-    type: "Kehilangan",
-    category: "Kunci",
-    date: "3 Nov 2026",
-    status: "Selesai",
-  },
-  {
-    id: 5,
-    title: "Dompet kulit hitam",
-    description: "Ditemukan di kantin, berisi kartu mahasiswa",
-    reporter: "Nadia F.",
-    type: "Ditemukan",
-    category: "Dompet",
-    date: "2 Nov 2026",
-    status: "Open",
-  },
-];
+const API_BASE = "http://127.0.0.1:8000";
+
+function resolveImageUrl(img) {
+  if (!img) return null;
+
+  const raw =
+    typeof img === "string"
+      ? img
+      : img.url ?? img.path ?? img.image_path ?? null;
+
+  if (!raw) return null;
+
+  if (/^https?:\/\//i.test(raw)) return raw;
+
+  if (raw.startsWith("/storage/")) return `${API_BASE}${raw}`;
+
+  if (raw.startsWith("/")) return raw;
+
+  return `${API_BASE}/storage/${raw}`;
+}
 
 function TypeBadge({ type }) {
-  const isFound = type === "Ditemukan";
+  const isFound =
+    String(type).toLowerCase() === "ditemukan" ||
+    String(type).toLowerCase() === "found";
 
   return (
     <Badge
@@ -84,7 +55,9 @@ function TypeBadge({ type }) {
 }
 
 function StatusBadge({ status }) {
-  const done = status === "Selesai";
+  const done = ["selesai", "resolved", "completed"].includes(
+    String(status).toLowerCase(),
+  );
 
   return (
     <Badge
@@ -100,8 +73,9 @@ function StatusBadge({ status }) {
 }
 
 export default function AdminPosts() {
-  const [postList, setPostList] = useState(posts);
-  const [postToDelete, setPostToDelete] = useState(null);
+  const [posts, setPosts] = useState([]);
+  const [loading, setLoading] = useState(true);
+
   const [typeFilter, setTypeFilter] = useState("Semua");
   const [statusFilter, setStatusFilter] = useState("Semua");
   const [categoryFilter, setCategoryFilter] = useState("Semua");
@@ -111,9 +85,91 @@ export default function AdminPosts() {
 
   const itemsPerPage = 7;
 
+  useEffect(() => {
+    const fetchPosts = async () => {
+      try {
+        const response = await adminService.getPosts();
+
+        console.log("DATA ADMIN POSTS:", response);
+
+        const postData = Array.isArray(response)
+          ? response
+          : Array.isArray(response?.data)
+            ? response.data
+            : Array.isArray(response?.posts)
+              ? response.posts
+              : [];
+
+        const formattedPosts = postData.map((post) => {
+          const rawImages =
+            Array.isArray(post.images) && post.images.length > 0
+              ? post.images
+              : post.image
+                ? [post.image]
+                : [];
+
+          const images = rawImages.map(resolveImageUrl).filter(Boolean);
+
+          const typeLabels = {
+            lost: "Kehilangan",
+            found: "Ditemukan",
+            kehilangan: "Kehilangan",
+            ditemukan: "Ditemukan",
+          };
+
+          const statusLabels = {
+            open: "Open",
+            active: "Open",
+            resolved: "Selesai",
+            completed: "Selesai",
+            selesai: "Selesai",
+          };
+
+          const createdAt = post.created_at
+            ? new Date(post.created_at)
+            : null;
+
+          return {
+            ...post,
+            title: post.title || "Tanpa judul",
+            description: post.description || "-",
+            reporter:
+              post.user?.name || post.author?.name || "-",
+            type:
+              typeLabels[String(post.type).toLowerCase()] ||
+              post.type ||
+              "-",
+            category: post.category || "-",
+            date: createdAt
+              ? createdAt.toLocaleDateString("id-ID", {
+                  day: "numeric",
+                  month: "short",
+                  year: "numeric",
+                })
+              : "-",
+            status:
+              statusLabels[String(post.status).toLowerCase()] ||
+              post.status ||
+              "-",
+            image: images[0] || null,
+          };
+        });
+
+        setPosts(formattedPosts);
+      } catch (error) {
+        console.error("Gagal mengambil postingan:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchPosts();
+  }, []);
+
   const filteredPosts = useMemo(() => {
-    let result = postList.filter((post) => {
-      const matchesType = typeFilter === "Semua" || post.type === typeFilter;
+    let result = posts.filter((post) => {
+      const matchesType =
+        typeFilter === "Semua" || post.type === typeFilter;
 
       const matchesStatus =
         statusFilter === "Semua" || post.status === statusFilter;
@@ -125,7 +181,12 @@ export default function AdminPosts() {
         post.title.toLowerCase().includes(search.toLowerCase()) ||
         post.reporter.toLowerCase().includes(search.toLowerCase());
 
-      return matchesType && matchesStatus && matchesCategory && matchesSearch;
+      return (
+        matchesType &&
+        matchesStatus &&
+        matchesCategory &&
+        matchesSearch
+      );
     });
 
     if (sortOrder === "Terlama") {
@@ -133,7 +194,7 @@ export default function AdminPosts() {
     }
 
     return result;
-  }, [postList, typeFilter, statusFilter, categoryFilter, sortOrder, search]);
+  }, [posts, typeFilter, statusFilter, categoryFilter, sortOrder, search]);
 
   const totalPages = Math.max(
     1,
@@ -148,12 +209,15 @@ export default function AdminPosts() {
   const startItem =
     filteredPosts.length === 0 ? 0 : (page - 1) * itemsPerPage + 1;
 
-  const endItem = Math.min(page * itemsPerPage, filteredPosts.length);
+  const endItem = Math.min(
+    page * itemsPerPage,
+    filteredPosts.length,
+  );
 
   return (
     <div className="space-y-15 mt-8">
-      {/* Page Heading */}
       <div className="mx-10">
+        {/* Page Heading */}
         <div className="mb-5">
           <h1 className="text-2xl font-bold tracking-tight">
             Postingan ({filteredPosts.length})
@@ -164,7 +228,7 @@ export default function AdminPosts() {
         </div>
 
         {/* Filters and Search */}
-        <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between mb-5">
+        <div className="mb-5 flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
           <div className="flex flex-wrap items-center gap-2">
             {/* Type Filter */}
             <div className="flex rounded-lg border bg-white p-1">
@@ -178,7 +242,7 @@ export default function AdminPosts() {
                   }}
                   className={`rounded-md px-3 py-1.5 text-xs font-medium transition ${
                     typeFilter === type
-                      ? "bg-white shadow-sm"
+                      ? "bg-black/85 shadow-sm text-white"
                       : "text-muted-foreground hover:bg-gray-50"
                   }`}
                 >
@@ -260,13 +324,41 @@ export default function AdminPosts() {
               </TableHeader>
 
               <TableBody>
-                {currentPosts.length > 0 ? (
+                {loading ? (
+                  <TableRow>
+                    <TableCell
+                      colSpan={7}
+                      className="h-24 text-center text-muted-foreground"
+                    >
+                      Memuat postingan...
+                    </TableCell>
+                  </TableRow>
+                ) : currentPosts.length > 0 ? (
                   currentPosts.map((post) => (
                     <TableRow key={post.id}>
                       <TableCell className="min-w-[230px]">
                         <div className="flex items-center gap-2.5">
-                          <div className="grid size-10 shrink-0 place-items-center rounded-md bg-muted text-muted-foreground">
-                            <ImageIcon className="size-4" />
+                          <div className="size-10 shrink-0 overflow-hidden rounded-md bg-muted">
+                            {post.image ? (
+                              <img
+                                src={post.image}
+                                alt={post.title}
+                                className="size-full object-cover"
+                                onError={(e) => {
+                                  e.currentTarget.style.display = "none";
+                                  e.currentTarget.nextElementSibling.style.display = "grid";
+                                }}
+                              />
+                            ) : null}
+
+                            <div
+                              className="size-full place-items-center text-muted-foreground"
+                              style={{
+                                display: post.image ? "none" : "grid",
+                              }}
+                            >
+                              <ImageIcon className="size-4" />
+                            </div>
                           </div>
 
                           <div className="min-w-0">

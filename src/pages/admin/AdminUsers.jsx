@@ -1,6 +1,8 @@
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Search } from "lucide-react";
+
+import { adminService } from "@/services/adminService";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,79 +15,129 @@ import {
   TableRow,
 } from "@/components/ui/table";
 
-// Mock data sementara, mengikuti data di Dashboard
-const users = [
-  {
-    id: 1,
-    initials: "SR",
-    name: "Salsa R.",
-    email: "salsa.r@widyatama.ac.id",
-    whatsapp: "0812 xxxx 1042",
-    posts: 3,
-    joined: "4 Nov 2026",
-  },
-  {
-    id: 2,
-    initials: "DA",
-    name: "Dimas A.",
-    email: "dimas.a@widyatama.ac.id",
-    whatsapp: "0813 xxxx 2210",
-    posts: 5,
-    joined: "2 Nov 2026",
-  },
-  {
-    id: 3,
-    initials: "AB",
-    name: "Akun Baru",
-    email: "akunbaru77@widyatama.ac.id",
-    whatsapp: "0857 xxxx 9031",
-    posts: 4,
-    joined: "2 Nov 2026",
-  },
-  {
-    id: 4,
-    initials: "RP",
-    name: "Raka P.",
-    email: "raka.p@widyatama.ac.id",
-    whatsapp: "0821 xxxx 7765",
-    posts: 2,
-    joined: "30 Okt 2026",
-  },
-  {
-    id: 5,
-    initials: "NF",
-    name: "Nadia F.",
-    email: "nadia.f@widyatama.ac.id",
-    whatsapp: "0878 xxxx 3318",
-    posts: 1,
-    joined: "28 Okt 2026",
-  },
-];
+const API_BASE = "http://127.0.0.1:8000";
+
+function resolveImageUrl(image) {
+  if (!image) return null;
+
+  const raw =
+    typeof image === "string"
+      ? image
+      : image.url || image.path || image.image_path || null;
+
+  if (!raw) return null;
+
+  if (/^https?:\/\//i.test(raw)) return raw;
+  if (raw.startsWith("/storage/")) return `${API_BASE}${raw}`;
+  if (raw.startsWith("/")) return raw;
+
+  return `${API_BASE}/storage/${raw}`;
+}
 
 export default function AdminUsers() {
+  const [users, setUsers] = useState([]);
+  const [loading, setLoading] = useState(true);
+
   const [sortOrder, setSortOrder] = useState("Terbaru");
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
 
   const itemsPerPage = 7;
 
+  // Fetch users from backend
+  useEffect(() => {
+    const fetchUsers = async () => {
+      try {
+        setLoading(true);
+
+        const response = await adminService.getUsers();
+
+        console.log("DATA ADMIN USERS:", response);
+
+        const userData = Array.isArray(response)
+          ? response
+          : Array.isArray(response?.data)
+            ? response.data
+            : Array.isArray(response?.users)
+              ? response.users
+              : [];
+
+        const formattedUsers = userData.map((user) => {
+          const name = user.name || "-";
+
+          const postsCount =
+            user.posts_count ??
+            (Array.isArray(user.posts) ? user.posts.length : null) ??
+            (typeof user.posts === "number" ? user.posts : 0);
+
+          return {
+            id: user.id,
+            name,
+            initials: name
+              .split(" ")
+              .filter(Boolean)
+              .map((word) => word[0])
+              .join("")
+              .slice(0, 2)
+              .toUpperCase(),
+            email: user.email || "-",
+            whatsapp:
+              user.whatsapp ||
+              user.phone ||
+              user.phone_number ||
+              "-",
+            posts: postsCount,
+            joined: user.created_at
+              ? new Date(user.created_at).toLocaleDateString("id-ID", {
+                  day: "2-digit",
+                  month: "short",
+                  year: "numeric",
+                })
+              : "-",
+            avatar: resolveImageUrl(
+              user.avatar || user.profile_picture || user.profile_photo
+            ),
+            createdAt: user.created_at
+              ? new Date(user.created_at).getTime()
+              : 0,
+          };
+        });
+
+        setUsers(formattedUsers);
+      } catch (error) {
+        console.error("Gagal mengambil data pengguna:", error);
+        setUsers([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchUsers();
+  }, []);
+
+  // Search and sorting
   const filteredUsers = useMemo(() => {
+    const keyword = search.toLowerCase();
+
     let result = users.filter((user) => {
       const matchesSearch =
-        user.name.toLowerCase().includes(search.toLowerCase()) ||
-        user.email.toLowerCase().includes(search.toLowerCase()) ||
-        user.whatsapp.toLowerCase().includes(search.toLowerCase());
+        user.name.toLowerCase().includes(keyword) ||
+        user.email.toLowerCase().includes(keyword) ||
+        user.whatsapp.toLowerCase().includes(keyword);
 
       return matchesSearch;
     });
 
-    if (sortOrder === "Terlama") {
-      result = [...result].reverse();
-    }
+    result = [...result].sort((a, b) => {
+      return sortOrder === "Terbaru"
+        ? b.createdAt - a.createdAt
+        : a.createdAt - b.createdAt;
+    });
 
     return result;
-  }, [sortOrder, search]);
+  }, [users, sortOrder, search]);
 
+  // Pagination
   const totalPages = Math.max(
     1,
     Math.ceil(filteredUsers.length / itemsPerPage)
@@ -106,7 +158,6 @@ export default function AdminUsers() {
 
   return (
     <div className="space-y-5 mt-8">
-
       {/* Page Heading */}
       <div className="mx-10">
         <div className="mb-5">
@@ -165,14 +216,34 @@ export default function AdminUsers() {
               </TableHeader>
 
               <TableBody>
-                {currentUsers.length > 0 ? (
+                {loading ? (
+                  <TableRow>
+                    <TableCell
+                      colSpan={6}
+                      className="h-24 text-center text-muted-foreground"
+                    >
+                      Memuat data pengguna...
+                    </TableCell>
+                  </TableRow>
+                ) : currentUsers.length > 0 ? (
                   currentUsers.map((user) => (
                     <TableRow key={user.id}>
                       <TableCell className="min-w-[150px]">
                         <div className="flex items-center gap-2.5">
-                          <div className="grid size-8 shrink-0 place-items-center rounded-full bg-muted text-xs font-medium text-muted-foreground">
-                            {user.initials}
-                          </div>
+                          {user.avatar ? (
+                            <img
+                              src={user.avatar}
+                              alt={user.name}
+                              className="size-8 shrink-0 rounded-full object-cover"
+                              onError={(e) => {
+                                e.currentTarget.style.display = "none";
+                              }}
+                            />
+                          ) : (
+                            <div className="grid size-8 shrink-0 place-items-center rounded-full bg-muted text-xs font-medium text-muted-foreground">
+                              {user.initials || "?"}
+                            </div>
+                          )}
 
                           <span className="font-medium">
                             {user.name}
