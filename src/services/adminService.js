@@ -1,5 +1,13 @@
 import apiClient from '../lib/axios'
 
+function unwrapList(res, key) {
+  const payload = res?.data ?? res
+  if (Array.isArray(payload)) return payload
+  if (Array.isArray(payload?.data)) return payload.data
+  if (key && Array.isArray(payload?.[key])) return payload[key]
+  return []
+}
+
 export const adminService = {
   async getStats() {
     const res = await apiClient.get('/admin/stats')
@@ -8,12 +16,7 @@ export const adminService = {
 
   async getPosts(params = {}) {
     const res = await apiClient.get('/admin/posts', { params })
-    return res?.data ?? res
-  },
-
-  async restorePost(id) {
-    const res = await apiClient.post(`/admin/posts/${id}/restore`)
-    return res?.data ?? res
+    return unwrapList(res, 'posts')
   },
 
   async deletePost(id) {
@@ -23,7 +26,7 @@ export const adminService = {
 
   async getUsers(params = {}) {
     const res = await apiClient.get('/admin/users', { params })
-    return res?.data ?? res
+    return unwrapList(res, 'users')
   },
 
   async updateUserRole(userId, role) {
@@ -33,7 +36,7 @@ export const adminService = {
 
   async getClaims(params = {}) {
     const res = await apiClient.get('/admin/claims', { params })
-    return res?.data ?? res
+    return unwrapList(res, 'claims')
   },
 
   async respondClaim(claimId, { status, owner_note = '' }) {

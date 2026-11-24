@@ -1,22 +1,9 @@
-import { useEffect, useRef, useState } from 'react'
-import { createPortal } from 'react-dom'
+import { useEffect } from 'react'
 import { Navigate, useLocation } from 'react-router-dom'
 import { toast } from 'sonner'
 import Navbar from '../components/Navbar'
 import Footer from '../components/Footer'
 import { useAuth } from '../context/AuthContext'
-
-const CURTAIN_DURATION_MS = 1000
-const INTERACTION_LOCK_MS = 650
-
-function getRouteLabel(pathname) {
-  if (pathname === '/') return 'Beranda'
-  if (pathname.startsWith('/profile')) return 'Profil Pengguna'
-  if (pathname.startsWith('/buat-laporan')) return 'Buat Laporan'
-  if (pathname.startsWith('/edit-laporan')) return 'Edit Laporan'
-  if (pathname.startsWith('/posts')) return 'Detail Laporan'
-  return 'Lost & Found'
-}
 
 export default function DefaultLayout({ children }) {
   const location = useLocation()
@@ -25,11 +12,6 @@ export default function DefaultLayout({ children }) {
     isAuthenticated && Boolean(user) && !String(user.whatsapp || '').trim()
   const shouldRedirectToProfile = needsPhone && location.pathname !== '/profile'
 
-  const prevPathRef = useRef(location.pathname)
-  const [transitionKey, setTransitionKey] = useState(0)
-  const [showCurtain, setShowCurtain] = useState(false)
-  const [lockPointer, setLockPointer] = useState(false)
-
   useEffect(() => {
     if (shouldRedirectToProfile) {
       toast.info('Silakan lengkapi nomor WhatsApp Anda terlebih dahulu.', {
@@ -37,27 +19,6 @@ export default function DefaultLayout({ children }) {
       })
     }
   }, [shouldRedirectToProfile])
-
-  useEffect(() => {
-    if (prevPathRef.current === location.pathname) return undefined
-    prevPathRef.current = location.pathname
-    setTransitionKey((k) => k + 1)
-    setShowCurtain(true)
-    setLockPointer(true)
-
-    const unlockTimer = setTimeout(() => {
-      setLockPointer(false)
-    }, INTERACTION_LOCK_MS)
-
-    const hideTimer = setTimeout(() => {
-      setShowCurtain(false)
-    }, CURTAIN_DURATION_MS)
-
-    return () => {
-      clearTimeout(unlockTimer)
-      clearTimeout(hideTimer)
-    }
-  }, [location.pathname])
 
   if (shouldRedirectToProfile) {
     return <Navigate to="/profile" replace />
@@ -71,33 +32,6 @@ export default function DefaultLayout({ children }) {
       </div>
 
       <Footer />
-
-      {showCurtain &&
-        typeof document !== 'undefined' &&
-        createPortal(
-          <div
-            key={transitionKey}
-            aria-hidden="true"
-            className={`animate-page-curtain fixed inset-0 z-[95] flex flex-col items-center justify-center bg-[#171717] text-white ${
-              lockPointer ? 'pointer-events-auto' : 'pointer-events-none'
-            }`}
-          >
-            <div className="animate-page-curtain-brand flex flex-col items-center gap-3">
-              <img
-                src="/solo.png"
-                alt=""
-                className="h-14 w-14 rounded-full object-cover shadow-xl ring-2 ring-white/15"
-              />
-              <span className="text-xs font-semibold tracking-widest uppercase text-white/85">
-                {getRouteLabel(location.pathname)}
-              </span>
-              <div className="h-0.5 w-24 overflow-hidden rounded-full bg-white/15">
-                <div className="animate-page-curtain-bar h-full w-full bg-[#F05A00]" />
-              </div>
-            </div>
-          </div>,
-          document.body
-        )}
     </div>
   )
 }

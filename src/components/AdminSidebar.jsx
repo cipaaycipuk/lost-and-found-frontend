@@ -1,4 +1,3 @@
-
 import { NavLink } from "react-router-dom";
 import {
   ClipboardCheck,
@@ -36,12 +35,12 @@ const menuItems = [
 
 export default function AdminSidebar() {
   return (
-    <aside className="w-full shrink-0 border-b bg-black p-3 md:min-h-[calc(100vh-56px)] md:w-60 md:border-b-0 md:border-r md:p-4">
-      <p className="mb-3 hidden px-3 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground md:block">
+    <aside className="w-full shrink-0 border-b border-white/10 bg-[#111111] px-4 py-2.5 md:sticky md:top-16 md:h-[calc(100vh-4rem)] md:w-60 md:overflow-y-auto md:border-b-0 md:border-r md:p-4">
+      <p className="mb-3 hidden px-3 text-[10px] font-semibold uppercase tracking-widest text-white/50 md:block">
         Menu Utama
       </p>
 
-      <nav className="flex gap-2 overflow-x-auto md:flex-col">
+      <nav className="no-scrollbar flex gap-1.5 overflow-x-auto md:flex-col md:gap-1">
         {menuItems.map((item) => {
           const Icon = item.icon;
 
@@ -50,16 +49,15 @@ export default function AdminSidebar() {
               key={item.id}
               to={item.path}
               className={({ isActive }) =>
-                `flex shrink-0 items-center gap-3 rounded-full px-3 py-2.5 text-sm font-medium transition-colors ${
+                `flex shrink-0 items-center gap-2.5 rounded-full px-3 py-1.5 text-xs font-medium transition-colors md:gap-3 md:px-3.5 md:py-2.5 md:text-sm ${
                   isActive
-                    ? "border border-orange-500/40 bg-orange-500/10 text-orange-200"
-                    : "text-muted-foreground hover:bg-orange-500/10 hover:text-orange-300"
+                    ? "border border-orange-500/40 bg-orange-500/15 text-orange-200"
+                    : "border border-transparent text-white/70 hover:bg-white/10 hover:text-white"
                 }`
               }
-
             >
-              <Icon size={18} />
-              {item.label}
+              <Icon size={17} className="shrink-0" />
+              <span>{item.label}</span>
             </NavLink>
           );
         })}

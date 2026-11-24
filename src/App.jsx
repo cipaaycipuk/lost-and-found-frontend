@@ -13,6 +13,7 @@ import AdminUsers from "./pages/admin/AdminUsers";
 import AdminClaims from "./pages/admin/AdminClaims";
 import AdminLayout from "./components/layouts/AdminLayout";
 import PanduanVerifikasi from "./pages/PanduanVerifikasi";
+import PageTransitionCurtain from "./components/PageTransitionCurtain";
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -28,6 +29,7 @@ export default function App() {
   return (
     <>
       <ScrollToTop />
+      <PageTransitionCurtain />
       <Routes>
         <Route
           path="/"
