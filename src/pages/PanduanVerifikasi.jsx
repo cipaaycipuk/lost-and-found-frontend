@@ -1,4 +1,5 @@
 import Navbar from "@/components/Navbar";
+import Footer from "@/components/Footer";
 
 const STEPS = [
   {
@@ -92,67 +93,70 @@ function WarningIcon() {
 
 export default function PanduanVerifikasi() {
   return (
-    <main className="min-h-screen bg-[#F5F5F4] px-8">
+    <div className="">
       <Navbar />
-      <div className="mx-auto max-w-4xl my-10">
-        {/* Header */}
-        <h1 className="text-3xl font-extrabold text-gray-900">
-          Panduan Verifikasi
-        </h1>
-        <p className="mt-2 max-w-2xl text-sm leading-relaxed text-gray-500">
-          Klaim barang diselesaikan lewat WhatsApp antara pelapor dan pemilik.
-          Ikuti langkah berikut agar barang sampai ke orang yang tepat dan
-          prosesnya tetap aman.
-        </p>
+      <main className="min-h-screen bg-[#F5F5F4] px-8">
+        <div className="mx-auto max-w-4xl my-10">
+          {/* Header */}
+          <h1 className="text-3xl font-extrabold text-gray-900">
+            Panduan Verifikasi
+          </h1>
+          <p className="mt-2 max-w-2xl text-sm leading-relaxed text-gray-500">
+            Klaim barang diselesaikan lewat WhatsApp antara pelapor dan pemilik.
+            Ikuti langkah berikut agar barang sampai ke orang yang tepat dan
+            prosesnya tetap aman.
+          </p>
 
-        {/* Warning banner */}
-        <div className="mt-5 flex items-start gap-2 rounded-lg bg-orange-50 px-4 py-3">
-          <WarningIcon />
-          <p className="text-sm leading-relaxed text-gray-700">
-            Jangan pernah mengirim uang, kode OTP, atau data pribadi kepada
-            siapa pun yang mengaku pemilik atau penemu barang.
+          {/* Warning banner */}
+          <div className="mt-5 flex items-start gap-2 rounded-lg bg-orange-50 px-4 py-3">
+            <WarningIcon />
+            <p className="text-sm leading-relaxed text-gray-700">
+              Jangan pernah mengirim uang, kode OTP, atau data pribadi kepada
+              siapa pun yang mengaku pemilik atau penemu barang.
+            </p>
+          </div>
+
+          {/* Steps card */}
+          <div className="mt-6 overflow-hidden rounded-2xl border border-gray-200 bg-white">
+            {STEPS.map((step, idx) => (
+              <section
+                key={step.number}
+                className={[
+                  "px-6 py-5",
+                  idx !== STEPS.length - 1 ? "border-b border-gray-200" : "",
+                ].join(" ")}
+              >
+                <div className="flex items-center gap-2.5">
+                  <StepNumber number={step.number} variant={step.variant} />
+                  <h2 className="text-md font-bold text-gray-900">
+                    {step.title}
+                  </h2>
+                </div>
+
+                <ul className="mt-2.5 space-y-1.5 pl-[34px] text-md leading-relaxed text-gray-600">
+                  {step.points.map((point, i) => (
+                    <li key={i} className="list-disc marker:text-gray-400">
+                      {point}
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            ))}
+          </div>
+
+          {/* Footer link */}
+          <p className="mt-5 text-[13px] text-gray-600">
+            Menemukan postingan yang mencurigakan atau tidak pantas?{" "}
+            <a
+              href="/kontak-admin"
+              className="font-semibold text-orange-600 hover:underline"
+            >
+              Hubungi admin
+            </a>
           </p>
         </div>
-
-        {/* Steps card */}
-        <div className="mt-6 overflow-hidden rounded-2xl border border-gray-200 bg-white">
-          {STEPS.map((step, idx) => (
-            <section
-              key={step.number}
-              className={[
-                "px-6 py-5",
-                idx !== STEPS.length - 1 ? "border-b border-gray-200" : "",
-              ].join(" ")}
-            >
-              <div className="flex items-center gap-2.5">
-                <StepNumber number={step.number} variant={step.variant} />
-                <h2 className="text-md font-bold text-gray-900">
-                  {step.title}
-                </h2>
-              </div>
-
-              <ul className="mt-2.5 space-y-1.5 pl-[34px] text-md leading-relaxed text-gray-600">
-                {step.points.map((point, i) => (
-                  <li key={i} className="list-disc marker:text-gray-400">
-                    {point}
-                  </li>
-                ))}
-              </ul>
-            </section>
-          ))}
-        </div>
-
-        {/* Footer link */}
-        <p className="mt-5 text-[13px] text-gray-600">
-          Menemukan postingan yang mencurigakan atau tidak pantas?{" "}
-          <a
-            href="/kontak-admin"
-            className="font-semibold text-orange-600 hover:underline"
-          >
-            Hubungi admin
-          </a>
-        </p>
-      </div>
-    </main>
+      </main>
+      <Footer />
+    </div>
   );
 }
