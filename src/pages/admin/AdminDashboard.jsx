@@ -14,59 +14,6 @@ import {
   TableRow,
 } from "@/components/ui/table";
 
-const posts = [
-  {
-    id: 1,
-    title: "Tumbler minum leopard",
-    description: "Motif leopard dengan gagang, hilang di area kampus",
-    reporter: "Salsa R.",
-    type: "Kehilangan",
-    category: "Lainnya",
-    date: "4 Nov 2026",
-    status: "Open",
-  },
-  {
-    id: 2,
-    title: "Handphone casing pink",
-    description: "Ditemukan di depan perpustakaan",
-    reporter: "Dimas A.",
-    type: "Ditemukan",
-    category: "Elektronik",
-    date: "4 Nov 2026",
-    status: "Open",
-  },
-  {
-    id: 3,
-    title: "Promo jasa joki tugas",
-    description: "Hubungi WA untuk informasi lebih lanjut",
-    reporter: "Akun Baru",
-    type: "Kehilangan",
-    category: "Lainnya",
-    date: "3 Nov 2026",
-    status: "Open",
-  },
-  {
-    id: 4,
-    title: "Kunci motor Honda",
-    description: "Gantungan kunci hitam, hilang di parkiran",
-    reporter: "Raka P.",
-    type: "Kehilangan",
-    category: "Kunci",
-    date: "3 Nov 2026",
-    status: "Selesai",
-  },
-  {
-    id: 5,
-    title: "Dompet kulit hitam",
-    description: "Ditemukan di kantin, berisi kartu mahasiswa",
-    reporter: "Nadia F.",
-    type: "Ditemukan",
-    category: "Dompet",
-    date: "2 Nov 2026",
-    status: "Open",
-  },
-];
-
 const users = [
   {
     id: 1,
@@ -184,7 +131,9 @@ function StatCard({ item }) {
 }
 
 function TypeBadge({ type }) {
-  const isFound = type === "Ditemukan";
+  const isFound = String(type).toLowerCase() === "ditemukan";
+  const label = isFound ? "Ditemukan" : "Kehilangan";
+
   return (
     <Badge
       className={
@@ -193,13 +142,15 @@ function TypeBadge({ type }) {
           : "border-0 bg-orange-100 text-orange-700 hover:bg-orange-100"
       }
     >
-      {type}
+      {label}
     </Badge>
   );
 }
 
 function StatusBadge({ status }) {
-  const done = status === "Selesai" || status === "Diterima";
+  const done = ["selesai", "resolved", "diterima"].includes(
+    String(status).toLowerCase(),
+  );
   return (
     <Badge
       className={
@@ -233,7 +184,7 @@ function ActionButtons({ deleteLabel = "Hapus" }) {
   );
 }
 
-function PostsTable() {
+function PostsTable({ posts, loading }) {
   return (
     <Table>
       <TableHeader>
@@ -247,36 +198,78 @@ function PostsTable() {
           <TableHead>Aksi</TableHead>
         </TableRow>
       </TableHeader>
+
       <TableBody>
-        {posts.map((post) => (
-          <TableRow key={post.id}>
-            <TableCell className="min-w-[220px]">
-              <div className="flex items-center gap-2.5">
-                <div className="grid size-9 shrink-0 place-items-center rounded-md bg-muted text-muted-foreground">
-                  <Package className="size-4" />
-                </div>
-                <div className="min-w-0">
-                  <p className="font-medium text-foreground">{post.title}</p>
-                  <p className="max-w-[220px] truncate text-xs text-muted-foreground">
-                    {post.description}
-                  </p>
-                </div>
-              </div>
-            </TableCell>
-            <TableCell>{post.reporter}</TableCell>
-            <TableCell>
-              <TypeBadge type={post.type} />
-            </TableCell>
-            <TableCell>{post.category}</TableCell>
-            <TableCell className="whitespace-nowrap">{post.date}</TableCell>
-            <TableCell>
-              <StatusBadge status={post.status} />
-            </TableCell>
-            <TableCell>
-              <ActionButtons />
+        {loading ? (
+          <TableRow>
+            <TableCell colSpan={7} className="py-8 text-center">
+              Memuat postingan...
             </TableCell>
           </TableRow>
-        ))}
+        ) : posts.length === 0 ? (
+          <TableRow>
+            <TableCell colSpan={7} className="py-8 text-center">
+              Belum ada postingan.
+            </TableCell>
+          </TableRow>
+        ) : (
+          posts.map((post) => (
+            <TableRow key={post.id}>
+              <TableCell className="min-w-[220px]">
+                <div className="flex items-center gap-2.5">
+                  <div className="size-12 shrink-0 overflow-hidden rounded-md bg-muted">
+                    {post.image ? (
+                      <img
+                        src={`http://127.0.0.1:8000/storage${post.image}`}
+                        alt={post.title}
+                        className="size-full object-cover"
+                      />
+                    ) : (
+                      <div className="grid size-full place-items-center text-muted-foreground">
+                        <Package className="size-4" />
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="min-w-0">
+                    <p className="font-medium text-foreground">{post.title}</p>
+                    <p className="max-w-[220px] truncate text-xs text-muted-foreground">
+                      {post.description || "-"}
+                    </p>
+                  </div>
+                </div>
+              </TableCell>
+
+              <TableCell>
+                {post.user?.name || post.author?.name || "-"}
+              </TableCell>
+
+              <TableCell>
+                <TypeBadge type={post.type} />
+              </TableCell>
+
+              <TableCell>{post.category || "-"}</TableCell>
+
+              <TableCell className="whitespace-nowrap">
+                {post.created_at
+                  ? new Date(post.created_at).toLocaleDateString("id-ID", {
+                      day: "numeric",
+                      month: "short",
+                      year: "numeric",
+                    })
+                  : "-"}
+              </TableCell>
+
+              <TableCell>
+                <StatusBadge status={post.status} />
+              </TableCell>
+
+              <TableCell>
+                <ActionButtons />
+              </TableCell>
+            </TableRow>
+          ))
+        )}
       </TableBody>
     </Table>
   );
@@ -376,13 +369,20 @@ function ClaimsTable() {
 export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState("posts");
   const [stats, setStats] = useState(null);
-  const [loadingStats, setLoadingStats] = useState(null);
+  const [loadingStats, setLoadingStats] = useState(true);
+
+  const [posts, setPosts] = useState([]);
+  const [loadingPosts, setLoadingPosts] = useState(true);
 
   useEffect(() => {
     const fetchStats = async () => {
       try {
         const response = await adminService.getStats();
-        setStats(response.data);
+
+        console.log("RESPONSE STATS:", response);
+        console.log("DATA STATS:", response.data);
+
+        setStats(response?.data ?? response);
       } catch (error) {
         console.error("Gagal mengambil statistik:", error);
       } finally {
@@ -393,30 +393,48 @@ export default function AdminDashboard() {
     fetchStats();
   }, []);
 
+  useEffect(() => {
+    const fetchPosts = async () => {
+      try {
+        const response = await adminService.getPosts();
+
+        console.log("DATA POSTINGAN:", response);
+
+        setPosts(Array.isArray(response) ? response : []);
+      } catch (error) {
+        console.error("Gagal mengambil postingan:", error);
+      } finally {
+        setLoadingPosts(false);
+      }
+    };
+
+    fetchPosts();
+  }, []);
+
   const statItems = [
     {
       label: "Total laporan",
-      value: stats?.posts_total ?? "—",
+      value: stats?.posts_total ?? "-",
       icon: Package,
     },
     {
       label: "Kehilangan",
-      value: "—",
+      value: stats?.posts_lost ?? "-",
       dot: "bg-orange-500",
     },
     {
       label: "Ditemukan",
-      value: "—",
+      value: stats?.posts_found ?? "-",
       dot: "bg-blue-600",
     },
     {
       label: "Selesai",
-      value: stats?.posts_resolved ?? "—",
+      value: stats?.posts_resolved ?? "-",
       icon: CheckCircle2,
     },
     {
       label: "Pengguna terdaftar",
-      value: stats?.users_total ?? "—",
+      value: stats?.users_total ?? "-",
       icon: Users,
     },
   ];
@@ -501,7 +519,7 @@ export default function AdminDashboard() {
               <div className="mt-3 overflow-hidden rounded-xl border bg-white shadow-sm">
                 <TabsContent value="posts" className="m-0">
                   <div className="overflow-x-auto">
-                    <PostsTable />
+                    <PostsTable posts={posts} loading={loadingPosts} />
                   </div>
                 </TabsContent>
                 <TabsContent value="users" className="m-0">

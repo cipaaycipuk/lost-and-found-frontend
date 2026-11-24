@@ -50,12 +50,13 @@ export default function AdminSidebar() {
               key={item.id}
               to={item.path}
               className={({ isActive }) =>
-                `flex shrink-0 items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
+                `flex shrink-0 items-center gap-3 rounded-full px-3 py-2.5 text-sm font-medium transition-colors ${
                   isActive
-                    ? "bg-orange-50 text-orange-700"
-                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                    ? "border border-orange-500/40 bg-orange-500/10 text-orange-200"
+                    : "text-muted-foreground hover:bg-orange-500/10 hover:text-orange-300"
                 }`
               }
+
             >
               <Icon size={18} />
               {item.label}
