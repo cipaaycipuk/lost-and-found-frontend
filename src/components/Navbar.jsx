@@ -15,6 +15,7 @@ import {
   useMarkNotificationReadMutation,
   useNotificationsQuery,
 } from '../hooks/useNotifications'
+import { resolveNotificationUrl } from '../services/notificationService'
 
 export default function Navbar() {
   const navigate = useNavigate()
@@ -214,11 +215,7 @@ export default function Navbar() {
                         onClick={() => {
                           if (!notif.isRead) markRead.mutate(notif.id)
                           setNotifOpen(false)
-                          const targetPostId = notif.postId ?? notif.post_id
-                          const targetUrl = targetPostId
-                            ? `/?post=${targetPostId}`
-                            : notif.url || '/'
-                          navigate(targetUrl)
+                          navigate(resolveNotificationUrl(notif))
                         }}
                         className={`block w-full cursor-pointer rounded-none px-4 py-3 text-left transition ${
                           notif.isRead ? 'bg-white' : 'bg-orange-50/50'
@@ -227,7 +224,7 @@ export default function Navbar() {
                         <p className="text-xs leading-relaxed text-gray-800">
                           {notif.message}
                         </p>
-                        <span className="mt-1 block text-[11px] text-gray-400">
+                        <span className="mt-1 block text-[11px] text-gray-500">
                           {notif.timeAgo}
                         </span>
                       </DropdownMenuItem>

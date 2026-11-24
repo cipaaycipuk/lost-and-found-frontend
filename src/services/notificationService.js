@@ -15,13 +15,49 @@ const extractPostId = (n) => {
 
 const normalizeNotification = (n) => ({
   id: n.id,
-  type: n.type || 'info',
+  type: n.type || n.data?.type || 'info',
   postId: extractPostId(n),
-  url: n.url || n.link || null,
+  claimId: n.claim_id ?? n.claimId ?? n.data?.claim_id ?? n.data?.claimId ?? null,
+  url: n.url || n.link || n.data?.url || null,
   message: n.message || n.title || n.data?.message || '',
   timeAgo: n.timeAgo || n.time_ago || formatTimeAgo(n.created_at),
   isRead: Boolean(n.is_read ?? n.isRead ?? n.read_at),
 })
+
+export function resolveNotificationUrl(notif) {
+  const type = String(notif?.type || '').toLowerCase()
+  const msg = String(notif?.message || '').toLowerCase()
+  const rawUrl = String(notif?.url || '')
+
+  const isComment =
+    type.includes('comment') ||
+    type.includes('komentar') ||
+    type.includes('reply') ||
+    /mengomentari|membalas komentar/.test(msg)
+
+  const isClaim =
+    !isComment &&
+    (Boolean(notif?.claimId ?? notif?.claim_id) ||
+      type.includes('claim') ||
+      type.includes('klaim') ||
+      rawUrl.includes('/profile') ||
+      rawUrl.includes('claim') ||
+      /\bklaim\b|pengajuan|melaporkan telah menemukan|melaporkan penemuan/.test(msg))
+
+  if (isClaim) {
+    const isSubmittedResponse =
+      /respond|accept|reject|approve|decline/.test(type) ||
+      /\b(diterima|disetujui|ditolak|menyetujui|menolak)\b|klaim anda|pengajuan anda/.test(
+        msg
+      )
+    return isSubmittedResponse
+      ? '/profile?tab=claims&sub=submitted'
+      : '/profile?tab=claims'
+  }
+
+  const targetPostId = notif?.postId ?? notif?.post_id
+  return targetPostId ? `/?post=${targetPostId}` : rawUrl || '/'
+}
 
 export const notificationService = {
   async getNotifications() {
