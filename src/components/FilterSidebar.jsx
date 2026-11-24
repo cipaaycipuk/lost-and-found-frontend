@@ -126,7 +126,10 @@ export default function FilterSidebar({
       {/* === MOBILE FILTER MODAL / SHEET === */}
       {isMobileFilterOpen && (
         <div
-          className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-0 backdrop-blur-[2px] sm:items-center sm:p-4 lg:hidden"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Filter laporan"
+          className="fixed inset-0 z-[60] flex items-end justify-center bg-black/55 p-0 backdrop-blur-[2px] sm:items-center sm:p-4 lg:hidden"
           onClick={() => setIsMobileFilterOpen(false)}
         >
           <div

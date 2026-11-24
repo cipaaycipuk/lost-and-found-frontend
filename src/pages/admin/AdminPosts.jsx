@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { Search, Image as ImageIcon } from "lucide-react";
 
+import ConfirmDialog from "../../components/ConfirmDialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -99,6 +100,8 @@ function StatusBadge({ status }) {
 }
 
 export default function AdminPosts() {
+  const [postList, setPostList] = useState(posts);
+  const [postToDelete, setPostToDelete] = useState(null);
   const [typeFilter, setTypeFilter] = useState("Semua");
   const [statusFilter, setStatusFilter] = useState("Semua");
   const [categoryFilter, setCategoryFilter] = useState("Semua");
@@ -109,7 +112,7 @@ export default function AdminPosts() {
   const itemsPerPage = 7;
 
   const filteredPosts = useMemo(() => {
-    let result = posts.filter((post) => {
+    let result = postList.filter((post) => {
       const matchesType = typeFilter === "Semua" || post.type === typeFilter;
 
       const matchesStatus =
@@ -130,7 +133,7 @@ export default function AdminPosts() {
     }
 
     return result;
-  }, [typeFilter, statusFilter, categoryFilter, sortOrder, search]);
+  }, [postList, typeFilter, statusFilter, categoryFilter, sortOrder, search]);
 
   const totalPages = Math.max(
     1,
@@ -308,7 +311,7 @@ export default function AdminPosts() {
                             variant="outline"
                             size="sm"
                             className="h-7 border-red-200 px-2.5 text-xs text-red-600 hover:bg-red-50 hover:text-red-700"
-                            onClick={() => alert(`Hapus: ${post.title}`)}
+                            onClick={() => setPostToDelete(post)}
                           >
                             Hapus
                           </Button>
@@ -363,6 +366,28 @@ export default function AdminPosts() {
           </div>
         </div>
       </div>
+
+      <ConfirmDialog
+        open={Boolean(postToDelete)}
+        variant="danger"
+        title="Hapus Postingan?"
+        description={
+          <>
+            Apakah Anda yakin ingin menghapus postingan{" "}
+            <strong className="font-bold text-gray-900">
+              &ldquo;{postToDelete?.title}&rdquo;
+            </strong>
+            ?
+          </>
+        }
+        subDescription="Tindakan ini tidak dapat dibatalkan. Postingan yang dihapus tidak dapat dipulihkan kembali."
+        confirmLabel="Ya, Hapus"
+        onConfirm={() => {
+          setPostList((prev) => prev.filter((item) => item.id !== postToDelete.id));
+          setPostToDelete(null);
+        }}
+        onCancel={() => setPostToDelete(null)}
+      />
     </div>
   );
 }

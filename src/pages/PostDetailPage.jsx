@@ -6,12 +6,12 @@ import ErrorPage from './ErrorPage'
 function DetailModalSkeleton({ onClose }) {
   return (
     <div
-      className="no-scrollbar fixed inset-0 z-50 overflow-y-auto bg-black/70 px-3 py-6 backdrop-blur-[2px] sm:px-6 sm:py-10"
+      className="no-scrollbar fixed inset-0 z-[60] flex items-start justify-center overflow-y-auto bg-black/65 px-3 py-6 backdrop-blur-[2px] sm:px-6 sm:py-10"
       onClick={onClose}
     >
       <div
         style={{ borderLeftWidth: '5px', borderLeftColor: '#E5E7EB' }}
-        className="mx-auto max-w-2xl animate-pulse space-y-5 rounded-xl border border-gray-200 bg-white p-5 shadow-2xl sm:p-6"
+        className="my-auto w-full max-w-2xl animate-pulse space-y-5 rounded-xl border border-gray-200 bg-white p-5 shadow-2xl sm:p-6"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="h-4 w-24 rounded bg-gray-200" />

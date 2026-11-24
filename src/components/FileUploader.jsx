@@ -1,9 +1,9 @@
+import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { X } from "lucide-react";
-import { useState, useRef, useEffect } from "react";
 
 const ALLOWED_MIME_TYPES = ["image/jpeg", "image/jpg", "image/png"];
 
-// Satu thumbnail. Mendukung objek File baru maupun string URL gambar lama (saat Edit Laporan).
 function Thumb({ file, onRemove, onClick }) {
   const [url, setUrl] = useState(() => (typeof file === "string" ? file : null));
 
@@ -12,20 +12,24 @@ function Thumb({ file, onRemove, onClick }) {
       setUrl(file);
       return undefined;
     }
-    const u = URL.createObjectURL(file);
-    setUrl(u);
-    return () => URL.revokeObjectURL(u);
+    const objectUrl = URL.createObjectURL(file);
+    setUrl(objectUrl);
+    return () => URL.revokeObjectURL(objectUrl);
   }, [file]);
 
   const label = typeof file === "string" ? "Foto laporan" : file.name;
 
   return (
     <li
-      className="group relative aspect-square cursor-pointer overflow-hidden rounded-md bg-gray-200 shadow-sm transition-all duration-300 hover:scale-105"
       onClick={() => onClick(file)}
+      className="group relative aspect-square min-h-0 min-w-0 cursor-zoom-in overflow-hidden rounded-lg border border-gray-200 bg-gray-100 shadow-xs"
     >
       {url && (
-        <img src={url} alt={label} className="h-full w-full object-cover" />
+        <img
+          src={url}
+          alt={label}
+          className="block h-full w-full object-cover object-center transition duration-300 group-hover:scale-[1.04]"
+        />
       )}
       <button
         type="button"
@@ -34,9 +38,9 @@ function Thumb({ file, onRemove, onClick }) {
           onRemove();
         }}
         aria-label={`Hapus ${label}`}
-        className="absolute right-1 top-1 flex h-6 w-6 items-center justify-center rounded-full bg-black/60 text-sm leading-none text-white hover:bg-black/80"
+        className="absolute right-1.5 top-1.5 z-10 flex h-6 w-6 items-center justify-center rounded-full bg-black/65 text-white transition hover:bg-black/85"
       >
-        X
+        <X size={14} />
       </button>
     </li>
   );
@@ -54,9 +58,38 @@ export default function FileUploader({
 }) {
   const [dragging, setDragging] = useState(false);
   const [currentFoto, setCurrentFoto] = useState(null);
+  const [previewUrl, setPreviewUrl] = useState(null);
   const [error, setError] = useState("");
   const inputRef = useRef(null);
   const dragCounter = useRef(0);
+
+  // Kelola Object URL preview agar tidak bocor memori pada setiap render
+  useEffect(() => {
+    if (!currentFoto) {
+      setPreviewUrl(null);
+      return undefined;
+    }
+    if (typeof currentFoto === "string") {
+      setPreviewUrl(currentFoto);
+      return undefined;
+    }
+    const objectUrl = URL.createObjectURL(currentFoto);
+    setPreviewUrl(objectUrl);
+    return () => URL.revokeObjectURL(objectUrl);
+  }, [currentFoto]);
+
+  useEffect(() => {
+    if (!currentFoto) return undefined;
+    const onKeyDown = (e) => {
+      if (e.key === "Escape") {
+        e.stopPropagation();
+        e.stopImmediatePropagation();
+        setCurrentFoto(null);
+      }
+    };
+    window.addEventListener("keydown", onKeyDown, true);
+    return () => window.removeEventListener("keydown", onKeyDown, true);
+  }, [currentFoto]);
 
   const tambahFile = (fileList) => {
     const baru = Array.from(fileList);
@@ -119,14 +152,6 @@ export default function FileUploader({
     }
   };
 
-  const handleClick = (foto) => {
-    setCurrentFoto(foto);
-  };
-
-  const handleCloseModal = () => {
-    setCurrentFoto(null);
-  };
-
   const handleInput = (e) => {
     tambahFile(e.target.files);
     e.target.value = "";
@@ -145,7 +170,6 @@ export default function FileUploader({
         className="hidden"
       />
 
-      {/* Area drop */}
       <div
         role="button"
         tabIndex={0}
@@ -162,17 +186,17 @@ export default function FileUploader({
         onDragEnter={handleDragEnter}
         onDragLeave={handleDragLeave}
         style={dragging ? { borderColor: accent, color: accent } : undefined}
-        className={`flex h-32 w-full select-none flex-col items-center justify-center rounded-md border-2 border-dashed text-gray-500 outline-none focus-visible:ring-2 focus-visible:ring-gray-400 ${
+        className={`flex h-32 w-full select-none flex-col items-center justify-center rounded-lg border-2 border-dashed px-4 text-center text-gray-500 outline-none focus-visible:ring-2 focus-visible:ring-gray-400 ${
           dragging ? "bg-white" : "border-gray-300 bg-[#ebebeb]"
         } ${penuh ? "cursor-not-allowed opacity-60" : "cursor-pointer hover:bg-gray-200"}`}
       >
         <span className="text-4xl font-extralight leading-none">+</span>
-        <span className="mt-2 text-xs">
+        <span className="mt-2 text-xs font-medium">
           {penuh
             ? `Maksimal ${maxFiles} foto tercapai`
             : dragging
-            ? "Lepaskan foto di sini"
-            : "Unggah foto barang"}
+              ? "Lepaskan foto di sini"
+              : "Unggah foto barang"}
         </span>
         {!penuh && !dragging && (
           <span className="mt-0.5 text-[11px]">
@@ -185,41 +209,60 @@ export default function FileUploader({
 
       {value.length > 0 && (
         <>
-          <p className="mt-2 text-xs text-gray-500">
-            {value.length}/{maxFiles} foto
+          <p className="mt-2.5 text-xs text-gray-500 tabular-nums">
+            {value.length}/{maxFiles} foto terunggah
           </p>
-          <ul className="mt-2 grid grid-cols-3 gap-2 sm:grid-cols-4">
+          <ul className="mt-2 grid grid-cols-3 gap-2.5 sm:grid-cols-4">
             {value.map((file, i) => (
-              <Thumb key={kunci(file)} file={file} onRemove={() => hapus(i)} onClick={handleClick} />
+              <Thumb
+                key={kunci(file)}
+                file={file}
+                onRemove={() => hapus(i)}
+                onClick={setCurrentFoto}
+              />
             ))}
           </ul>
         </>
       )}
 
-      {currentFoto && (
-        <div
-          className="fixed inset-0 z-100 flex items-center justify-center bg-black/90 p-4"
-          onClick={handleCloseModal}
-        >
-          <button
-            type="button"
-            onClick={handleCloseModal}
-            className="absolute right-5 top-5 rounded-full bg-white/10 p-2 text-white transition hover:bg-white/20 cursor-pointer"
+      {currentFoto &&
+        previewUrl &&
+        typeof document !== "undefined" &&
+        createPortal(
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label="Pratinjau foto unggahan"
+            className="fixed inset-0 z-[100] flex flex-col justify-between bg-black/92 p-3 sm:p-5"
+            onClick={() => setCurrentFoto(null)}
           >
-            <X size={28} />
-          </button>
+            <div className="flex shrink-0 items-center justify-between gap-3">
+              <span className="truncate text-xs font-medium text-white/80">
+                {typeof currentFoto === "string" ? "Foto laporan" : currentFoto.name}
+              </span>
+              <button
+                type="button"
+                aria-label="Tutup pratinjau"
+                onClick={() => setCurrentFoto(null)}
+                className="rounded-full bg-white/15 p-2 text-white transition hover:bg-white/25"
+              >
+                <X size={22} />
+              </button>
+            </div>
 
-          <img
-            src={
-              typeof currentFoto === "string"
-                ? currentFoto
-                : URL.createObjectURL(currentFoto)
-            }
-            alt={typeof currentFoto === "string" ? "Foto laporan" : currentFoto.name}
-            className="max-h-[90vh] max-w-[95vw] rounded-md object-contain"
-          />
-        </div>
-      )}
+            <div className="my-2 flex min-h-0 flex-1 items-center justify-center">
+              <img
+                src={previewUrl}
+                alt={typeof currentFoto === "string" ? "Foto laporan" : currentFoto.name}
+                onClick={(e) => e.stopPropagation()}
+                className="max-h-full max-w-full rounded-lg object-contain select-none"
+              />
+            </div>
+
+            <div className="h-2 shrink-0" />
+          </div>,
+          document.body
+        )}
     </div>
   );
 }

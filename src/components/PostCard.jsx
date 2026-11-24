@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   MapPin,
@@ -6,7 +6,6 @@ import {
   MessageSquareReply,
   Bookmark,
   Phone,
-  X,
   CheckCircle2,
   MoreVertical,
   Tag,
@@ -40,7 +39,6 @@ export default function PostCard({ post, isOwner = false, onSelect }) {
   const canManage =
     isOwner || (Boolean(user?.id) && String(user.id) === String(post.author?.id))
 
-  const [isImageOpen, setIsImageOpen] = useState(false)
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false)
   const [claimModalOpen, setClaimModalOpen] = useState(false)
 
@@ -77,15 +75,6 @@ export default function PostCard({ post, isOwner = false, onSelect }) {
     waPhone,
     `Halo ${post.author?.name || ''}, saya melihat laporan "${post.title}" di Lost & Found.`
   )
-
-  useEffect(() => {
-    if (!isImageOpen) return
-    const onKeyDown = (e) => {
-      if (e.key === 'Escape') setIsImageOpen(false)
-    }
-    window.addEventListener('keydown', onKeyDown)
-    return () => window.removeEventListener('keydown', onKeyDown)
-  }, [isImageOpen])
 
   return (
     <article
@@ -301,8 +290,18 @@ export default function PostCard({ post, isOwner = false, onSelect }) {
 
       <ConfirmDialog
         open={confirmDeleteOpen}
-        title="Yakin Hapus Laporan?"
-        description={`Laporan "${post.title}" akan dipindahkan ke sampah dan masih bisa dipulihkan kembali dari halaman Profil.`}
+        variant="danger"
+        title="Hapus Postingan?"
+        description={
+          <>
+            Apakah Anda yakin ingin menghapus postingan{' '}
+            <strong className="font-bold text-gray-900">
+              &ldquo;{post.title}&rdquo;
+            </strong>
+            ?
+          </>
+        }
+        subDescription="Tindakan ini tidak dapat dibatalkan. Postingan yang dihapus tidak dapat dipulihkan kembali."
         confirmLabel="Ya, Hapus"
         loading={deletePost.isPending}
         onConfirm={() =>
@@ -312,36 +311,6 @@ export default function PostCard({ post, isOwner = false, onSelect }) {
         }
         onCancel={() => setConfirmDeleteOpen(false)}
       />
-
-      {/* Lightbox */}
-      {isImageOpen && (
-        <div
-          className="fixed inset-0 z-[999] flex items-center justify-center bg-black/90 p-4"
-          onClick={(e) => {
-            e.stopPropagation()
-            setIsImageOpen(false)
-          }}
-        >
-          <button
-            type="button"
-            aria-label="Tutup pratinjau gambar"
-            onClick={(e) => {
-              e.stopPropagation()
-              setIsImageOpen(false)
-            }}
-            className="absolute right-5 top-5 rounded-full bg-white/10 p-2 text-white transition hover:bg-white/20"
-          >
-            <X size={24} />
-          </button>
-
-          <img
-            src={post.image}
-            alt={post.title}
-            onClick={(e) => e.stopPropagation()}
-            className="max-h-[90vh] max-w-[95vw] rounded-lg object-contain"
-          />
-        </div>
-      )}
     </article>
   )
 }

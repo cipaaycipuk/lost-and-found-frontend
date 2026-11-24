@@ -482,8 +482,18 @@ export default function PostDetail({ post, onBack }) {
 
       <ConfirmDialog
         open={confirmDeleteOpen}
-        title="Yakin Hapus Laporan?"
-        description={`Laporan "${post.title}" akan dipindahkan ke sampah dan masih bisa dipulihkan kembali dari halaman Profil.`}
+        variant="danger"
+        title="Hapus Postingan?"
+        description={
+          <>
+            Apakah Anda yakin ingin menghapus postingan{' '}
+            <strong className="font-bold text-gray-900">
+              &ldquo;{post.title}&rdquo;
+            </strong>
+            ?
+          </>
+        }
+        subDescription="Tindakan ini tidak dapat dibatalkan. Postingan yang dihapus tidak dapat dipulihkan kembali."
         confirmLabel="Ya, Hapus"
         loading={deletePost.isPending}
         onConfirm={() =>

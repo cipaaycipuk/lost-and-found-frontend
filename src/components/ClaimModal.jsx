@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { HandHeart, X } from 'lucide-react'
 import { useSubmitClaimMutation } from '../hooks/useClaims'
 
@@ -18,14 +19,16 @@ export default function ClaimModal({ open, post, onClose }) {
     if (!open) return undefined
     const onKeyDown = (e) => {
       if (e.key === 'Escape' && !submitClaim.isPending) {
+        e.stopPropagation()
+        e.stopImmediatePropagation()
         onClose?.()
       }
     }
-    window.addEventListener('keydown', onKeyDown)
-    return () => window.removeEventListener('keydown', onKeyDown)
+    window.addEventListener('keydown', onKeyDown, true)
+    return () => window.removeEventListener('keydown', onKeyDown, true)
   }, [open, submitClaim.isPending, onClose])
 
-  if (!open || !post) return null
+  if (!open || !post || typeof document === 'undefined') return null
 
   const isKehilangan = post.type === 'kehilangan'
   const modalTitle = isKehilangan
@@ -56,12 +59,12 @@ export default function ClaimModal({ open, post, onClose }) {
     )
   }
 
-  return (
+  return createPortal(
     <div
       role="dialog"
       aria-modal="true"
       aria-labelledby="claim-modal-title"
-      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-4 backdrop-blur-[2px]"
+      className="fixed inset-0 z-[80] flex items-center justify-center bg-black/60 p-4 backdrop-blur-[2px]"
       onClick={(e) => {
         e.stopPropagation()
         if (!submitClaim.isPending) onClose?.()
@@ -146,6 +149,7 @@ export default function ClaimModal({ open, post, onClose }) {
           </div>
         </form>
       </div>
-    </div>
+    </div>,
+    document.body
   )
 }

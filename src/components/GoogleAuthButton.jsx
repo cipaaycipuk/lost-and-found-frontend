@@ -211,7 +211,10 @@ export default function GoogleAuthButton({ label = 'Continue with Google' }) {
       {/* Popup khusus saat VITE_USE_MOCK=true */}
       {showMockPicker && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Pilih akun Google"
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/55 p-4 backdrop-blur-[2px]"
           onClick={() => !loading && setShowMockPicker(false)}
         >
           <div

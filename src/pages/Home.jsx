@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { AlertCircle, PackageSearch, Plus, RefreshCw } from 'lucide-react'
 import FilterSidebar from '../components/FilterSidebar'
@@ -44,15 +44,6 @@ export default function Home() {
   const [selectedPost, setSelectedPost] = useState(null)
 
   const { data: notifPostDetail } = usePostDetailQuery(postParam)
-
-  useEffect(() => {
-    if (!selectedPost) return undefined
-    const onKeyDown = (e) => {
-      if (e.key === 'Escape') setSelectedPost(null)
-    }
-    window.addEventListener('keydown', onKeyDown)
-    return () => window.removeEventListener('keydown', onKeyDown)
-  }, [selectedPost])
 
   const handleCloseModal = () => {
     setSelectedPost(null)

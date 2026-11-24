@@ -1,11 +1,13 @@
-import { useState } from 'react'
-import { useLocation, useNavigate, useParams } from 'react-router-dom'
+import { useMemo, useState } from 'react'
+import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
 import {
   AlertCircle,
   ArrowLeft,
   Camera,
   Check,
+  ChevronDown,
+  Clock,
   Loader2,
   Mail,
   Phone,
@@ -15,6 +17,7 @@ import { toast } from 'sonner'
 import Avatar from '../components/Avatar'
 import ConfirmDialog from '../components/ConfirmDialog'
 import PostCard from '../components/PostCard'
+import PostDetailModal from '../components/PostDetailModal'
 import { useAuth } from '../context/AuthContext'
 import {
   useMyPostsQuery,
@@ -25,23 +28,322 @@ import { useMyClaimsQuery, useRespondClaimMutation } from '../hooks/useClaims'
 import { currentUser as fallbackDummyUser } from '../lib/dummyData'
 import { formatTimeAgo, formatWhatsAppUrl, resolveMediaUrl } from '../lib/formatters'
 
+function normalizeClaimStatus(rawStatus) {
+  const s = String(rawStatus || 'pending').trim().toLowerCase()
+  if (s === 'accepted' || s === 'approved' || s === 'diterima' || s === 'disetujui') {
+    return 'accepted'
+  }
+  if (s === 'rejected' || s === 'declined' || s === 'ditolak') {
+    return 'rejected'
+  }
+  return 'pending'
+}
+
+function groupClaimsByPost(list) {
+  const map = new Map()
+  list.forEach((claim) => {
+    const pid = String(claim.post?.id || claim.post_id || claim.id)
+    if (!map.has(pid)) {
+      map.set(pid, {
+        postId: pid,
+        post: claim.post || {
+          id: pid,
+          title: `Laporan #${pid}`,
+          type: 'kehilangan',
+          image: null,
+        },
+        claims: [],
+      })
+    }
+    map.get(pid).claims.push(claim)
+  })
+  return Array.from(map.values())
+}
+
+function ClaimGroupCard({
+  group,
+  isReceived,
+  isPending,
+  respondDisabled,
+  onRespond,
+  onOpenPost,
+}) {
+  const isKehilangan = group.post?.type !== 'ditemukan'
+  const thumbUrl = resolveMediaUrl(group.post?.image || group.post?.images?.[0])
+  const hasAccepted = group.claims.some((c) => c.normalizedStatus === 'accepted')
+
+  const headerStatus = !isPending
+    ? hasAccepted
+      ? 'Selesai • Diterima'
+      : group.post?.status === 'selesai'
+        ? 'Selesai • Ditolak'
+        : 'Ditolak'
+    : null
+
+  return (
+    <div
+      style={{
+        borderLeftWidth: '5px',
+        borderLeftColor: isKehilangan ? '#F05A00' : '#0026FF',
+      }}
+      className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm"
+    >
+      <div className="flex items-center justify-between gap-3 border-b border-gray-200 px-4 py-3 sm:px-5">
+        <button
+          type="button"
+          onClick={() => group.post?.id && onOpenPost(group.post)}
+          className="group/post flex min-w-0 items-center gap-3 text-left"
+        >
+          {thumbUrl && (
+            <img
+              src={thumbUrl}
+              alt={group.post?.title}
+              className="h-10 w-10 shrink-0 rounded-lg object-cover"
+            />
+          )}
+          <div className="flex min-w-0 flex-wrap items-center gap-2">
+            <h3 className="truncate text-sm font-bold text-gray-900 group-hover/post:underline sm:text-base">
+              {group.post?.title}
+            </h3>
+            <span
+              className={`rounded-full px-2.5 py-0.5 text-xs font-bold ${
+                isKehilangan
+                  ? 'bg-[#FCEEE3] text-[#c84615]'
+                  : 'bg-[#E2E6FF] text-[#0022CC]'
+              }`}
+            >
+              {isKehilangan ? 'Kehilangan' : 'Ditemukan'}
+            </span>
+          </div>
+        </button>
+
+        {isPending ? (
+          isReceived ? (
+            <span className="shrink-0 text-xs text-gray-500 tabular-nums">
+              {group.claims.length} pengajuan menunggu
+            </span>
+          ) : (
+            <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-800">
+              <Clock size={12} />
+              Menunggu
+            </span>
+          )
+        ) : (
+          <span className="shrink-0 text-xs text-gray-500">{headerStatus}</span>
+        )}
+      </div>
+
+      <div className="divide-y divide-gray-200">
+        {group.claims.map((claim) => {
+          const person = isReceived
+            ? claim.claimer || claim.claimant || claim.user
+            : claim.owner || claim.post_owner || group.post?.author || group.post?.user
+
+          const phone = isReceived
+            ? person?.whatsapp || claim.contact_whatsapp
+            : claim.owner_whatsapp || person?.whatsapp || person?.contact
+          const email = isReceived ? person?.email : claim.owner_email || person?.email
+
+          const isAccepted = claim.normalizedStatus === 'accepted'
+          const waUrl = isAccepted
+            ? formatWhatsAppUrl(
+                phone,
+                `Halo ${person?.name || ''}, terkait klaim laporan "${group.post?.title || ''}" di Lost & Found.`
+              )
+            : null
+          const mailUrl =
+            isAccepted && !waUrl && email
+              ? `mailto:${email}?subject=${encodeURIComponent(`Klaim Lost & Found: ${group.post?.title || ''}`)}`
+              : null
+
+          const timeLabel = formatTimeAgo(
+            !isPending
+              ? claim.responded_at || claim.updated_at || claim.created_at || claim.createdAt
+              : claim.created_at || claim.createdAt
+          )
+
+          return (
+            <div
+              key={claim.id}
+              className="flex flex-col justify-between gap-3 px-4 py-3 sm:flex-row sm:items-center sm:px-5"
+            >
+              <div className="flex min-w-0 items-start gap-3">
+                {(isReceived || person?.name) && (
+                  <Avatar
+                    src={person?.avatar_url || person?.avatar}
+                    name={person?.name}
+                    className="h-9 w-9 shrink-0 text-xs"
+                  />
+                )}
+                <div className="min-w-0">
+                  {isPending ? (
+                    <>
+                      <p className="text-xs text-gray-600 sm:text-sm">
+                        {isReceived ? (
+                          <>
+                            <strong className="font-bold text-gray-900">
+                              {person?.name || 'Pengguna'}
+                            </strong>{' '}
+                            {isKehilangan
+                              ? 'melaporkan telah menemukan barang ini'
+                              : 'mengajukan klaim atas barang ini'}
+                          </>
+                        ) : person?.name ? (
+                          <>
+                            Diajukan kepada{' '}
+                            <strong className="font-bold text-gray-900">
+                              {person.name}
+                            </strong>
+                          </>
+                        ) : isKehilangan ? (
+                          'Anda melaporkan penemuan barang ini'
+                        ) : (
+                          'Anda mengajukan klaim kepemilikan barang ini'
+                        )}
+                      </p>
+                      <p className="mt-0.5 text-[11px] text-gray-500">
+                        {timeLabel} •{' '}
+                        {isReceived
+                          ? 'Lanjut di verifikasi via Whatsapp'
+                          : `Menunggu konfirmasi ${isKehilangan ? 'pemilik' : 'penemu'}`}
+                      </p>
+                      {claim.message && (
+                        <p className="mt-1 text-xs text-gray-600">
+                          &ldquo;{claim.message}&rdquo;
+                        </p>
+                      )}
+                    </>
+                  ) : (
+                    <>
+                      <p className="text-xs font-bold text-gray-900 sm:text-sm">
+                        {person?.name || (isReceived ? 'Pengguna' : 'Pemilik Laporan')}
+                      </p>
+                      <p className="text-[11px] text-gray-500">
+                        {isAccepted ? 'Diterima' : 'Ditolak'} • {timeLabel}
+                      </p>
+                      {!isReceived && claim.owner_note && (
+                        <p className="mt-1 text-xs text-gray-600">
+                          Catatan: &ldquo;{claim.owner_note}&rdquo;
+                        </p>
+                      )}
+                    </>
+                  )}
+                </div>
+              </div>
+
+              <div className="flex shrink-0 items-center gap-2 self-end sm:self-center">
+                {isPending && isReceived && (
+                  <>
+                    <button
+                      type="button"
+                      disabled={respondDisabled}
+                      onClick={() => onRespond(claim, group.post, 'rejected')}
+                      className="rounded-full border border-gray-300 bg-white px-4 py-1.5 text-xs font-semibold text-gray-800 transition hover:bg-gray-50 disabled:opacity-50"
+                    >
+                      Tolak
+                    </button>
+                    <button
+                      type="button"
+                      disabled={respondDisabled}
+                      onClick={() => onRespond(claim, group.post, 'accepted')}
+                      className="rounded-full bg-[#1C1C1C] px-4 py-1.5 text-xs font-semibold text-white transition hover:bg-neutral-800 disabled:opacity-50"
+                    >
+                      Terima
+                    </button>
+                  </>
+                )}
+
+                {isPending && !isReceived && group.post?.id && (
+                  <button
+                    type="button"
+                    onClick={() => onOpenPost(group.post)}
+                    className="rounded-full border border-gray-300 bg-white px-4 py-1.5 text-xs font-semibold text-gray-800 transition hover:bg-gray-50"
+                  >
+                    Lihat Laporan
+                  </button>
+                )}
+
+                {!isPending &&
+                  (waUrl ? (
+                    <a
+                      href={waUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center gap-1.5 rounded-full bg-[#1C1C1C] px-3.5 py-1.5 text-xs font-semibold text-white transition hover:bg-neutral-800"
+                    >
+                      <Phone size={13} />
+                      Hubungi WhatsApp
+                    </a>
+                  ) : mailUrl ? (
+                    <a
+                      href={mailUrl}
+                      className="inline-flex items-center gap-1.5 rounded-full border border-gray-300 bg-white px-3.5 py-1.5 text-xs font-semibold text-gray-800 transition hover:bg-gray-50"
+                    >
+                      <Mail size={13} />
+                      Hubungi Email
+                    </a>
+                  ) : (
+                    !isReceived &&
+                    isAccepted &&
+                    group.post?.id && (
+                      <button
+                        type="button"
+                        onClick={() => onOpenPost(group.post)}
+                        className="rounded-full border border-gray-300 bg-white px-3.5 py-1.5 text-xs font-semibold text-gray-800 transition hover:bg-gray-50"
+                      >
+                        Lihat Laporan
+                      </button>
+                    )
+                  ))}
+              </div>
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
 export default function Profile() {
   const { userId } = useParams()
   const location = useLocation()
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
   const queryClient = useQueryClient()
   const { user, isAuthenticated, updateProfile, logout } = useAuth()
 
   const isOwnProfile =
     !userId || (isAuthenticated && user && String(user.id) === String(userId))
 
-  const [activeTab, setActiveTab] = useState('posts')
+  const rawTab = searchParams.get('tab') || location.state?.activeTab || 'posts'
+  const activeTab =
+    isOwnProfile && ['posts', 'saved', 'claims'].includes(rawTab) ? rawTab : 'posts'
+  const rawSub = searchParams.get('sub') || location.state?.claimSubTab || 'received'
+  const claimSubTab = rawSub === 'submitted' ? 'submitted' : 'received'
+
+  const setTabParams = (nextTab, nextSub = claimSubTab) => {
+    const next = new URLSearchParams(searchParams)
+    if (nextTab === 'posts') {
+      next.delete('tab')
+      next.delete('sub')
+    } else {
+      next.set('tab', nextTab)
+      if (nextTab === 'claims' && nextSub === 'submitted') {
+        next.set('sub', 'submitted')
+      } else {
+        next.delete('sub')
+      }
+    }
+    setSearchParams(next, { replace: true })
+  }
+
   const [isEditing, setIsEditing] = useState(false)
   const [editName, setEditName] = useState('')
   const [editWhatsapp, setEditWhatsapp] = useState('')
   const [isSaving, setIsSaving] = useState(false)
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false)
-  const [claimConfirm, setClaimConfirm] = useState(null) // { claim, postTitle, status: 'accepted' | 'rejected' }
+  const [claimConfirm, setClaimConfirm] = useState(null)
+  const [selectedPost, setSelectedPost] = useState(null)
 
   const { data: myPosts = [], isLoading: loadingMine } = useMyPostsQuery(
     isOwnProfile && isAuthenticated
@@ -51,7 +353,6 @@ export default function Profile() {
   )
   const { data: claimsData = { submitted: [], received: [] }, isLoading: loadingClaims } =
     useMyClaimsQuery(isOwnProfile && isAuthenticated)
-
   const { data: publicProfileData, isLoading: loadingOther } =
     useUserOpenPostsQuery(isOwnProfile ? null : userId)
 
@@ -70,51 +371,75 @@ export default function Profile() {
   const missingPhone =
     isOwnProfile && isAuthenticated && !String(activeUser.whatsapp || '').trim()
 
-  const pendingReceivedClaims = (claimsData.received || []).filter(
-    (c) => c.status === 'pending'
+  // Laporan aktif ditaruh di atas laporan selesai agar tidak perlu scroll jauh
+  const sortedMyPosts = useMemo(
+    () =>
+      [...myPosts].sort(
+        (a, b) => Number(a.status === 'selesai') - Number(b.status === 'selesai')
+      ),
+    [myPosts]
   )
-  const historyClaims = [
-    ...(claimsData.received || []).filter((c) => c.status !== 'pending'),
-    ...(claimsData.submitted || []),
-  ]
 
-  const groupClaimsByPost = (list) => {
-    const map = new Map()
-    list.forEach((claim) => {
-      const pid = String(claim.post?.id || claim.post_id || claim.id)
-      if (!map.has(pid)) {
-        map.set(pid, {
-          postId: pid,
-          post: claim.post || {
-            id: pid,
-            title: `Laporan #${pid}`,
-            type: 'kehilangan',
-            image: null,
-          },
-          claims: [],
-        })
-      }
-      map.get(pid).claims.push(claim)
-    })
-    return Array.from(map.values())
+  const activeModalPost = useMemo(() => {
+    if (!selectedPost) return null
+    const allCached = [...myPosts, ...savedPosts, ...otherUserPosts]
+    return (
+      allCached.find((p) => String(p.id) === String(selectedPost.id)) || selectedPost
+    )
+  }, [selectedPost, myPosts, savedPosts, otherUserPosts])
+
+  const handleOpenClaimPost = (postRef) => {
+    const cached = [...myPosts, ...savedPosts].find(
+      (p) => String(p.id) === String(postRef.id)
+    )
+    if (cached) {
+      setSelectedPost(cached)
+    } else if (postRef?.id) {
+      navigate(`/posts/${postRef.id}`)
+    }
   }
 
-  const groupedPending = groupClaimsByPost(pendingReceivedClaims)
-  const groupedHistory = groupClaimsByPost(historyClaims)
+  const {
+    pendingReceived,
+    historyReceived,
+    pendingSubmitted,
+    historySubmitted,
+    totalClaimsCount,
+  } = useMemo(() => {
+    const rec = (claimsData.received || []).map((c) => ({
+      ...c,
+      normalizedStatus: normalizeClaimStatus(c.status),
+    }))
+    const sub = (claimsData.submitted || []).map((c) => ({
+      ...c,
+      normalizedStatus: normalizeClaimStatus(c.status),
+    }))
+    return {
+      pendingReceived: rec.filter((c) => c.normalizedStatus === 'pending'),
+      historyReceived: rec.filter((c) => c.normalizedStatus !== 'pending'),
+      pendingSubmitted: sub.filter((c) => c.normalizedStatus === 'pending'),
+      historySubmitted: sub.filter((c) => c.normalizedStatus !== 'pending'),
+      totalClaimsCount: rec.length + sub.length,
+    }
+  }, [claimsData])
+
+  const isReceivedTab = claimSubTab === 'received'
+  const activePendingGroups = useMemo(
+    () => groupClaimsByPost(isReceivedTab ? pendingReceived : pendingSubmitted),
+    [isReceivedTab, pendingReceived, pendingSubmitted]
+  )
+  const activeHistoryGroups = useMemo(
+    () => groupClaimsByPost(isReceivedTab ? historyReceived : historySubmitted),
+    [isReceivedTab, historyReceived, historySubmitted]
+  )
 
   const TABS = isOwnProfile
     ? [
         { key: 'posts', label: 'Postingan', count: myPosts.length },
         { key: 'saved', label: 'Tersimpan', count: savedPosts.length },
-        { key: 'claims', label: 'Pengajuan', count: pendingReceivedClaims.length },
+        { key: 'claims', label: 'Klaim', count: totalClaimsCount },
       ]
-    : [
-        {
-          key: 'posts',
-          label: 'Postingan Aktif',
-          count: otherUserPosts.length,
-        },
-      ]
+    : [{ key: 'posts', label: 'Postingan Aktif', count: otherUserPosts.length }]
 
   const doneCount = isOwnProfile
     ? myPosts.filter((post) => post.status === 'selesai').length
@@ -124,10 +449,6 @@ export default function Profile() {
     setEditName(activeUser.name || '')
     setEditWhatsapp(activeUser.whatsapp || '')
     setIsEditing(true)
-  }
-
-  const handleCancelEdit = () => {
-    setIsEditing(false)
   }
 
   const handleSaveInline = async () => {
@@ -203,13 +524,26 @@ export default function Profile() {
     navigate('/login')
   }
 
+  const postList =
+    activeTab === 'saved'
+      ? savedPosts
+      : isOwnProfile
+        ? sortedMyPosts
+        : otherUserPosts
+  const loadingList =
+    activeTab === 'saved'
+      ? loadingSaved
+      : isOwnProfile
+        ? loadingMine
+        : loadingOther
+
   return (
-    <div className="mx-auto mt-6 max-w-4xl px-4 pb-12 pt-6 sm:mt-8 sm:pt-10 lg:px-8">
+    <div className="mx-auto max-w-4xl px-4 pb-12 pt-5 sm:pt-7 lg:px-8">
       {!isOwnProfile && (
         <button
           type="button"
           onClick={() => navigate(-1)}
-          className="mb-6 inline-flex items-center gap-2 text-xs font-semibold text-gray-600 transition hover:text-black"
+          className="mb-4 inline-flex items-center gap-2 text-xs font-semibold text-gray-600 transition hover:text-black"
         >
           <ArrowLeft size={16} />
           <span>Kembali</span>
@@ -217,11 +551,11 @@ export default function Profile() {
       )}
 
       {missingPhone && (
-        <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-900">
-          <div className="flex items-center gap-2.5">
+        <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-2.5 text-xs text-amber-900">
+          <div className="flex items-center gap-2">
             <AlertCircle className="h-4 w-4 shrink-0 text-amber-600" />
             <span>
-              Nomor WhatsApp Anda masih kosong. Lengkapi nomor WhatsApp agar pengguna dapat menghubungi Anda setelah klaim diterima.
+              Lengkapi nomor WhatsApp agar pengguna dapat menghubungi Anda saat klaim diterima.
             </span>
           </div>
           {!isEditing && (
@@ -236,35 +570,29 @@ export default function Profile() {
         </div>
       )}
 
-      {/* Header profil: Horizontal ringkas di mobile sesuai gambar, besar di sm+ */}
-      <section className="mb-6 flex flex-row items-start gap-4 text-left sm:mb-10 sm:gap-10">
-        {/* Avatar: overlay ganti foto hanya muncul saat mode Edit Profil aktif */}
+      {/* Header Profil Ringkas */}
+      <section className="flex flex-row items-center gap-4 text-left sm:gap-6">
         <div className="group relative shrink-0">
           <Avatar
             src={activeUser.avatar_url || activeUser.avatar}
             name={activeUser.name}
-            className="size-20 text-2xl sm:size-[160px] sm:text-6xl"
+            className="size-16 text-xl sm:size-24 sm:text-3xl"
           />
 
           {isOwnProfile && isEditing && (
             <label
-              className={`absolute inset-0 flex cursor-pointer flex-col items-center justify-center rounded-full bg-black/60 text-white backdrop-blur-[2px] transition-opacity duration-200 ${
+              className={`absolute inset-0 flex cursor-pointer flex-col items-center justify-center rounded-full bg-black/60 text-white backdrop-blur-[2px] transition-opacity ${
                 isUploadingAvatar
                   ? 'pointer-events-none opacity-100'
                   : 'opacity-90 hover:opacity-100'
               }`}
             >
               {isUploadingAvatar ? (
-                <>
-                  <Loader2 className="h-6 w-6 animate-spin" />
-                  <span className="mt-1.5 text-xs font-medium">Mengunggah...</span>
-                </>
+                <Loader2 className="h-5 w-5 animate-spin" />
               ) : (
                 <>
-                  <Camera className="h-6 w-6" />
-                  <span className="mt-1.5 rounded-full bg-white/20 px-3 py-1 text-xs font-semibold">
-                    Ganti Foto
-                  </span>
+                  <Camera className="h-5 w-5" />
+                  <span className="mt-1 text-[10px] font-semibold">Foto</span>
                 </>
               )}
               <input
@@ -278,9 +606,9 @@ export default function Profile() {
           )}
         </div>
 
-        <div className="w-full min-w-0 flex-1">
-          <div className="flex flex-col items-start gap-3 sm:flex-row sm:justify-between sm:gap-4">
-            <div className="w-full min-w-0 flex-1">
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-col items-start gap-2.5 sm:flex-row sm:items-center sm:justify-between">
+            <div className="min-w-0 flex-1">
               {isEditing ? (
                 <input
                   type="text"
@@ -288,88 +616,73 @@ export default function Profile() {
                   onChange={(e) => setEditName(e.target.value)}
                   placeholder="Nama Lengkap"
                   autoFocus
-                  className="w-full border-b-2 border-black bg-transparent pb-1 text-left text-xl font-bold outline-none sm:text-4xl"
+                  className="w-full max-w-sm border-b-2 border-black bg-transparent pb-0.5 text-lg font-bold outline-none sm:text-2xl"
                 />
               ) : (
-                <h1 className="text-lg font-bold sm:text-4xl">{activeUser.name}</h1>
+                <h1 className="truncate text-lg font-bold text-gray-900 sm:text-2xl">
+                  {activeUser.name}
+                </h1>
               )}
 
-              {/* Email & WhatsApp HANYA ditampilkan di profil diri sendiri */}
-              {isOwnProfile && (
-                <>
+              {isOwnProfile ? (
+                <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-600 sm:text-sm">
                   {activeUser.email && (
-                    <p className="mt-0.5 break-all text-xs text-gray-600 sm:mt-1 sm:break-normal sm:text-lg">
-                      {activeUser.email}
-                    </p>
+                    <span className="break-all sm:break-normal">{activeUser.email}</span>
                   )}
-
+                  {activeUser.email && <span className="hidden text-gray-300 sm:inline">•</span>}
                   {isEditing ? (
-                    <div className="mt-2 flex items-center gap-2">
-                      <span className="text-xs font-medium text-gray-600 sm:text-lg">
-                        Whatsapp:
-                      </span>
+                    <label className="inline-flex items-center gap-1.5">
+                      <span>WA:</span>
                       <input
                         type="tel"
                         value={editWhatsapp}
                         onChange={(e) => setEditWhatsapp(e.target.value)}
-                        placeholder="Contoh: 081234567890"
-                        className="w-40 border-b-2 border-black bg-transparent pb-0.5 text-xs font-medium outline-none sm:w-52 sm:text-lg"
+                        placeholder="081234567890"
+                        className="w-36 border-b-2 border-black bg-transparent pb-0.5 font-medium text-gray-900 outline-none sm:w-44"
                       />
-                    </div>
+                    </label>
                   ) : (
-                    <p className="mt-0.5 text-xs sm:mt-1 sm:text-lg">
-                      Whatsapp:{' '}
-                      <span className={activeUser.whatsapp ? '' : 'italic text-amber-600'}>
+                    <span>
+                      WA:{' '}
+                      <span
+                        className={
+                          activeUser.whatsapp
+                            ? 'font-medium text-gray-800'
+                            : 'italic text-amber-700'
+                        }
+                      >
                         {activeUser.whatsapp || 'Belum diisi'}
                       </span>
-                    </p>
+                    </span>
                   )}
-
-                  {activeUser.auth_provider && (
-                    <div className="mt-2.5 hidden flex-wrap items-center gap-1.5 sm:flex">
-                      {String(activeUser.auth_provider)
-                        .split(',')
-                        .map((prov) => (
-                          <span
-                            key={prov}
-                            className="inline-flex items-center rounded-full border border-gray-200 bg-white px-2.5 py-0.5 text-xs font-medium capitalize text-gray-700"
-                          >
-                            Terhubung: {prov.trim()}
-                          </span>
-                        ))}
-                    </div>
-                  )}
-                </>
-              )}
-
-              {!isOwnProfile && (
-                <p className="mt-1 text-xs text-gray-500 sm:text-sm">
+                </div>
+              ) : (
+                <p className="mt-0.5 text-xs text-gray-500 sm:text-sm">
                   Profil Publik Kampus Widyatama
                 </p>
               )}
             </div>
 
-            {/* Tombol Aksi Header */}
             {isOwnProfile && (
-              <div className="flex shrink-0 flex-wrap items-center gap-2">
+              <div className="flex shrink-0 items-center gap-2">
                 {isEditing ? (
                   <>
                     <button
                       type="button"
                       disabled={isSaving}
                       onClick={handleSaveInline}
-                      className="inline-flex items-center gap-1.5 rounded-lg bg-black px-4 py-2 text-sm font-semibold text-white transition hover:bg-neutral-800 disabled:opacity-60"
+                      className="inline-flex items-center gap-1.5 rounded-lg bg-black px-3.5 py-1.5 text-xs font-semibold text-white transition hover:bg-neutral-800 disabled:opacity-60 sm:text-sm"
                     >
-                      <Check size={15} />
+                      <Check size={14} />
                       {isSaving ? 'Menyimpan...' : 'Simpan'}
                     </button>
                     <button
                       type="button"
                       disabled={isSaving}
-                      onClick={handleCancelEdit}
-                      className="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-700 transition hover:bg-gray-50"
+                      onClick={() => setIsEditing(false)}
+                      className="inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3.5 py-1.5 text-xs font-semibold text-gray-700 transition hover:bg-gray-50 sm:text-sm"
                     >
-                      <X size={15} />
+                      <X size={14} />
                       Batal
                     </button>
                   </>
@@ -378,14 +691,14 @@ export default function Profile() {
                     <button
                       type="button"
                       onClick={handleStartEdit}
-                      className="rounded-lg border border-neutral-700 px-5 py-2 text-sm font-semibold transition hover:bg-white"
+                      className="rounded-lg border border-neutral-700 px-3.5 py-1.5 text-xs font-semibold transition hover:bg-white sm:px-4 sm:text-sm"
                     >
                       Edit Profil
                     </button>
                     <button
                       type="button"
                       onClick={handleLogout}
-                      className="rounded-lg border border-red-300 bg-red-50 px-4 py-2 text-sm font-semibold text-red-700 transition hover:bg-red-100"
+                      className="rounded-lg border border-red-300 bg-red-50 px-3.5 py-1.5 text-xs font-semibold text-red-700 transition hover:bg-red-100 sm:text-sm"
                     >
                       Logout
                     </button>
@@ -395,22 +708,27 @@ export default function Profile() {
             )}
           </div>
 
-          <p className="mt-6 text-base sm:mt-8 sm:text-lg">
+          <p className="mt-2 text-xs font-medium text-gray-600 tabular-nums sm:text-sm">
             {isOwnProfile ? (
               <>
-                {myPosts.length} postingan <span className="mx-2">•</span> {doneCount} selesai
+                <span className="font-semibold text-gray-900">{myPosts.length}</span> postingan
+                <span className="mx-2 text-gray-300">•</span>
+                <span className="font-semibold text-gray-900">{doneCount}</span> selesai
               </>
             ) : (
-              <>{otherUserPosts.length} postingan aktif</>
+              <>
+                <span className="font-semibold text-gray-900">{otherUserPosts.length}</span>{' '}
+                postingan aktif
+              </>
             )}
           </p>
         </div>
       </section>
 
-      {/* Tab */}
+      {/* Tab Bar */}
       <div
         role="tablist"
-        className="mt-10 flex gap-5 overflow-x-auto border-b-2 border-gray-300 sm:gap-8"
+        className="mt-5 flex gap-5 overflow-x-auto border-b border-gray-300 pt-1 sm:mt-6 sm:gap-8"
       >
         {TABS.map((tab) => {
           const isActive = tab.key === activeTab
@@ -420,9 +738,11 @@ export default function Profile() {
               type="button"
               role="tab"
               aria-selected={isActive}
-              onClick={() => setActiveTab(tab.key)}
-              className={`-mb-0.5 shrink-0 border-b-2 pb-3 text-base sm:text-lg ${
-                isActive ? 'border-black font-bold' : 'border-transparent text-gray-700'
+              onClick={() => setTabParams(tab.key)}
+              className={`-mb-px shrink-0 border-b-2 pb-2.5 text-sm tabular-nums transition-colors sm:text-base ${
+                isActive
+                  ? 'border-black font-bold text-gray-900'
+                  : 'border-transparent text-gray-600 hover:text-gray-900'
               }`}
             >
               {tab.label} ({tab.count})
@@ -432,299 +752,153 @@ export default function Profile() {
       </div>
 
       {/* Konten Tab */}
-      <div className="mt-6 space-y-6">
-        {activeTab === 'posts' && (
-          (isOwnProfile ? loadingMine : loadingOther) ? (
-            <p className="py-12 text-center text-gray-400">Memuat postingan...</p>
-          ) : (isOwnProfile ? myPosts : otherUserPosts).length === 0 ? (
-            <p className="py-12 text-center text-gray-400">
-              {isOwnProfile
-                ? 'Belum ada postingan.'
-                : 'Belum ada laporan aktif dari pengguna ini.'}
+      <div className="mt-5 space-y-4">
+        {activeTab !== 'claims' ? (
+          loadingList ? (
+            <p className="py-10 text-center text-sm text-gray-500">Memuat daftar laporan...</p>
+          ) : postList.length === 0 ? (
+            <p className="rounded-xl border border-gray-200 bg-white px-4 py-10 text-center text-sm text-gray-500">
+              {activeTab === 'saved'
+                ? 'Belum ada laporan tersimpan.'
+                : isOwnProfile
+                  ? 'Belum ada postingan.'
+                  : 'Belum ada laporan aktif dari pengguna ini.'}
             </p>
           ) : (
-            (isOwnProfile ? myPosts : otherUserPosts).map((post) => (
-              <PostCard key={post.id} post={post} isOwner={isOwnProfile} />
+            postList.map((post) => (
+              <PostCard
+                key={post.id}
+                post={post}
+                isOwner={isOwnProfile && activeTab === 'posts'}
+                onSelect={(p) => setSelectedPost(p)}
+              />
             ))
           )
-        )}
-
-        {isOwnProfile && activeTab === 'saved' && (
-          loadingSaved ? (
-            <p className="py-12 text-center text-gray-400">Memuat tersimpan...</p>
-          ) : savedPosts.length === 0 ? (
-            <p className="py-12 text-center text-gray-400">Belum ada tersimpan.</p>
-          ) : (
-            savedPosts.map((post) => <PostCard key={post.id} post={post} />)
-          )
-        )}
-
-        {isOwnProfile && activeTab === 'claims' && (
-          loadingClaims ? (
-            <p className="py-12 text-center text-gray-400">Memuat daftar pengajuan...</p>
-          ) : (
-            <div className="space-y-8">
-              {/* MENUNGGU KONFIRMASI */}
-              <div className="space-y-3">
-                <h2 className="text-xs font-semibold uppercase tracking-wider text-gray-400">
-                  Menunggu Konfirmasi
-                </h2>
-                {groupedPending.length === 0 ? (
-                  <p className="rounded-xl border border-gray-200 bg-white px-4 py-8 text-center text-sm text-gray-400">
-                    Belum ada pengajuan klaim yang menunggu konfirmasi.
-                  </p>
-                ) : (
-                  <div className="space-y-4">
-                    {groupedPending.map((group) => {
-                      const isKehilangan = group.post?.type !== 'ditemukan'
-                      const thumbUrl = resolveMediaUrl(
-                        group.post?.image || group.post?.images?.[0]
-                      )
-                      return (
-                        <div
-                          key={group.postId}
-                          style={{
-                            borderLeftWidth: '5px',
-                            borderLeftColor: isKehilangan ? '#F05A00' : '#0026FF',
-                          }}
-                          className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm"
-                        >
-                          <div className="flex items-center justify-between gap-3 border-b border-gray-200 px-4 py-3.5 sm:px-5">
-                            <div className="flex min-w-0 items-center gap-3">
-                              {thumbUrl && (
-                                <img
-                                  src={thumbUrl}
-                                  alt={group.post?.title}
-                                  className="h-11 w-11 shrink-0 rounded-lg object-cover"
-                                />
-                              )}
-                              <div className="flex min-w-0 flex-wrap items-center gap-2">
-                                <h3 className="truncate text-sm font-bold text-gray-900 sm:text-base">
-                                  {group.post?.title}
-                                </h3>
-                                <span
-                                  className={`rounded-full px-3 py-0.5 text-xs font-bold ${
-                                    isKehilangan
-                                      ? 'bg-[#FCEEE3] text-[#F05A00]'
-                                      : 'bg-[#E2E6FF] text-[#0026FF]'
-                                  }`}
-                                >
-                                  {isKehilangan ? 'Kehilangan' : 'Ditemukan'}
-                                </span>
-                              </div>
-                            </div>
-                            <span className="shrink-0 text-xs text-gray-400">
-                              {group.claims.length} pengajuan menunggu
-                            </span>
-                          </div>
-
-                          <div className="divide-y divide-gray-200">
-                            {group.claims.map((claim) => {
-                              const actor = claim.claimer || claim.claimant
-                              return (
-                                <div
-                                  key={claim.id}
-                                  className="flex flex-col justify-between gap-3 px-4 py-3.5 sm:flex-row sm:items-center sm:px-5"
-                                >
-                                  <div className="flex min-w-0 items-start gap-3">
-                                    <Avatar
-                                      src={actor?.avatar_url || actor?.avatar}
-                                      name={actor?.name}
-                                      className="h-9 w-9 shrink-0 text-xs"
-                                    />
-                                    <div className="min-w-0">
-                                      <p className="text-xs text-gray-600 sm:text-sm">
-                                        <strong className="font-bold text-gray-900">
-                                          {actor?.name}
-                                        </strong>{' '}
-                                        {isKehilangan
-                                          ? 'melaporkan telah menemukan barang ini'
-                                          : 'mengajukan klaim kepemilikan barang ini'}
-                                      </p>
-                                      <p className="mt-0.5 text-[11px] text-gray-400">
-                                        {formatTimeAgo(claim.created_at || claim.createdAt)} • Lanjut di verifikasi via Whatsapp
-                                      </p>
-                                      {claim.message && (
-                                        <p className="mt-1 text-xs text-gray-600">
-                                          &ldquo;{claim.message}&rdquo;
-                                        </p>
-                                      )}
-                                    </div>
-                                  </div>
-
-                                  <div className="flex shrink-0 items-center gap-2 self-end sm:self-center">
-                                    <button
-                                      type="button"
-                                      disabled={respondClaim.isPending}
-                                      onClick={() =>
-                                        setClaimConfirm({
-                                          claim,
-                                          postTitle: group.post?.title,
-                                          postType: group.post?.type,
-                                          status: 'rejected',
-                                        })
-                                      }
-                                      className="rounded-full border border-gray-300 bg-white px-4 py-1.5 text-xs font-semibold text-gray-800 transition hover:bg-gray-50 disabled:opacity-50"
-                                    >
-                                      Tolak
-                                    </button>
-                                    <button
-                                      type="button"
-                                      disabled={respondClaim.isPending}
-                                      onClick={() =>
-                                        setClaimConfirm({
-                                          claim,
-                                          postTitle: group.post?.title,
-                                          postType: group.post?.type,
-                                          status: 'accepted',
-                                        })
-                                      }
-                                      className="rounded-full bg-[#1C1C1C] px-4 py-1.5 text-xs font-semibold text-white transition hover:bg-neutral-800 disabled:opacity-50"
-                                    >
-                                      Terima
-                                    </button>
-                                  </div>
-                                </div>
-                              )
-                            })}
-                          </div>
-                        </div>
-                      )
-                    })}
-                  </div>
-                )}
-              </div>
-
-              {/* RIWAYAT */}
-              <div className="space-y-3">
-                <h2 className="text-xs font-semibold uppercase tracking-wider text-gray-400">
-                  Riwayat
-                </h2>
-                {groupedHistory.length === 0 ? (
-                  <p className="rounded-xl border border-gray-200 bg-white px-4 py-8 text-center text-sm text-gray-400">
-                    Belum ada riwayat pengajuan klaim.
-                  </p>
-                ) : (
-                  <div className="space-y-4">
-                    {groupedHistory.map((group) => {
-                      const isKehilangan = group.post?.type !== 'ditemukan'
-                      const thumbUrl = resolveMediaUrl(
-                        group.post?.image || group.post?.images?.[0]
-                      )
-                      return (
-                        <div
-                          key={`history-${group.postId}`}
-                          style={{
-                            borderLeftWidth: '5px',
-                            borderLeftColor: isKehilangan ? '#F05A00' : '#0026FF',
-                          }}
-                          className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm"
-                        >
-                          <div className="flex items-center justify-between gap-3 border-b border-gray-200 px-4 py-3.5 sm:px-5">
-                            <div className="flex min-w-0 items-center gap-3">
-                              {thumbUrl && (
-                                <img
-                                  src={thumbUrl}
-                                  alt={group.post?.title}
-                                  className="h-11 w-11 shrink-0 rounded-lg object-cover"
-                                />
-                              )}
-                              <div className="flex min-w-0 flex-wrap items-center gap-2">
-                                <h3 className="truncate text-sm font-bold text-gray-900 sm:text-base">
-                                  {group.post?.title}
-                                </h3>
-                                <span
-                                  className={`rounded-full px-3 py-0.5 text-xs font-bold ${
-                                    isKehilangan
-                                      ? 'bg-[#FCEEE3] text-[#F05A00]'
-                                      : 'bg-[#E2E6FF] text-[#0026FF]'
-                                  }`}
-                                >
-                                  {isKehilangan ? 'Kehilangan' : 'Ditemukan'}
-                                </span>
-                              </div>
-                            </div>
-                            <span className="shrink-0 text-xs text-gray-400">
-                              Selesai
-                            </span>
-                          </div>
-
-                          <div className="divide-y divide-gray-200">
-                            {group.claims.map((claim) => {
-                              const person = claim.claimer || claim.owner
-                              const targetWa =
-                                claim.status === 'accepted'
-                                  ? formatWhatsAppUrl(
-                                      person?.whatsapp || claim.contact_whatsapp,
-                                      `Halo ${person?.name || ''}, terkait klaim laporan "${group.post?.title || ''}" di Lost & Found.`
-                                    )
-                                  : null
-                              const targetEmail = person?.email
-                              const mailUrl =
-                                claim.status === 'accepted' && !targetWa && targetEmail
-                                  ? `mailto:${targetEmail}?subject=${encodeURIComponent(`Klaim Lost & Found: ${group.post?.title || ''}`)}`
-                                  : null
-                              return (
-                                <div
-                                  key={claim.id}
-                                  className="flex flex-col justify-between gap-3 px-4 py-3.5 sm:flex-row sm:items-center sm:px-5"
-                                >
-                                  <div className="flex min-w-0 items-center gap-3">
-                                    <Avatar
-                                      src={person?.avatar_url || person?.avatar}
-                                      name={person?.name}
-                                      className="h-9 w-9 shrink-0 text-xs"
-                                    />
-                                    <div className="min-w-0">
-                                      <p className="text-xs font-bold text-gray-900 sm:text-sm">
-                                        {person?.name}
-                                      </p>
-                                      <p className="text-[11px] text-gray-400">
-                                        {claim.status === 'accepted'
-                                          ? 'Diterima'
-                                          : claim.status === 'rejected'
-                                            ? 'Ditolak'
-                                            : 'Menunggu'}{' '}
-                                        • {formatTimeAgo(claim.created_at || claim.createdAt)}
-                                      </p>
-                                    </div>
-                                  </div>
-
-                                  {targetWa ? (
-                                    <a
-                                      href={targetWa}
-                                      target="_blank"
-                                      rel="noreferrer"
-                                      className="inline-flex w-fit items-center gap-1.5 rounded-full bg-[#1C1C1C] px-3.5 py-1.5 text-xs font-semibold text-white transition hover:bg-neutral-800"
-                                    >
-                                      <Phone size={13} />
-                                      Hubungi WhatsApp
-                                    </a>
-                                  ) : (
-                                    mailUrl && (
-                                      <a
-                                        href={mailUrl}
-                                        className="inline-flex w-fit items-center gap-1.5 rounded-full border border-gray-300 bg-white px-3.5 py-1.5 text-xs font-semibold text-gray-800 transition hover:bg-gray-50"
-                                      >
-                                        <Mail size={13} />
-                                        Hubungi Email
-                                      </a>
-                                    )
-                                  )}
-                                </div>
-                              )
-                            })}
-                          </div>
-                        </div>
-                      )
-                    })}
-                  </div>
-                )}
-              </div>
+        ) : loadingClaims ? (
+          <p className="py-10 text-center text-sm text-gray-500">Memuat daftar klaim...</p>
+        ) : (
+          <div className="space-y-5">
+            {/* Pill Switcher: Masuk | Diajukan */}
+            <div
+              role="tablist"
+              aria-label="Kategori klaim"
+              className="inline-flex items-center gap-1 rounded-xl border border-gray-200/80 bg-white p-1 shadow-sm"
+            >
+              <button
+                type="button"
+                role="tab"
+                aria-selected={isReceivedTab}
+                onClick={() => setTabParams('claims', 'received')}
+                className={`rounded-lg px-4 py-1.5 text-xs font-semibold tabular-nums transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900/20 sm:text-sm ${
+                  isReceivedTab
+                    ? 'bg-[#2B2B2B] text-white'
+                    : 'text-gray-800 hover:bg-gray-100'
+                }`}
+              >
+                Masuk ({pendingReceived.length})
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={!isReceivedTab}
+                onClick={() => setTabParams('claims', 'submitted')}
+                className={`rounded-lg px-4 py-1.5 text-xs font-semibold tabular-nums transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-neutral-900/20 sm:text-sm ${
+                  !isReceivedTab
+                    ? 'bg-[#2B2B2B] text-white'
+                    : 'text-gray-800 hover:bg-gray-100'
+                }`}
+              >
+                Diajukan ({pendingSubmitted.length})
+              </button>
             </div>
-          )
+
+            {activePendingGroups.length === 0 && activeHistoryGroups.length === 0 ? (
+              <p className="rounded-xl border border-gray-200 bg-white px-4 py-10 text-center text-sm text-gray-500">
+                {isReceivedTab
+                  ? 'Belum ada klaim masuk pada laporan Anda.'
+                  : 'Anda belum pernah mengajukan klaim pada laporan mana pun.'}
+              </p>
+            ) : (
+              <div className="space-y-6">
+                {/* MENUNGGU KONFIRMASI */}
+                <div className="space-y-2.5">
+                  <h2 className="text-xs font-bold uppercase tracking-wider text-gray-500">
+                    Menunggu Konfirmasi
+                  </h2>
+                  {activePendingGroups.length === 0 ? (
+                    <p className="rounded-xl border border-dashed border-gray-200 bg-white/70 px-4 py-3 text-xs text-gray-500">
+                      {isReceivedTab
+                        ? 'Tidak ada klaim masuk yang menunggu konfirmasi saat ini.'
+                        : 'Tidak ada pengajuan Anda yang sedang menunggu konfirmasi.'}
+                    </p>
+                  ) : (
+                    <div className="space-y-3.5">
+                      {activePendingGroups.map((group) => (
+                        <ClaimGroupCard
+                          key={`pending-${claimSubTab}-${group.postId}`}
+                          group={group}
+                          isReceived={isReceivedTab}
+                          isPending
+                          respondDisabled={respondClaim.isPending}
+                          onOpenPost={handleOpenClaimPost}
+                          onRespond={(claim, post, status) =>
+                            setClaimConfirm({
+                              claim,
+                              postTitle: post?.title,
+                              postType: post?.type,
+                              status,
+                            })
+                          }
+                        />
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* RIWAYAT: otomatis terbuka jika tidak ada pending, ringkas (collapsible) jika sedang ada pending */}
+                {activeHistoryGroups.length > 0 && (
+                  <details
+                    key={`history-details-${claimSubTab}-${activePendingGroups.length === 0}`}
+                    open={activePendingGroups.length === 0}
+                    className="group space-y-2.5"
+                  >
+                    <summary className="flex cursor-pointer list-none items-center justify-between py-1 text-xs font-bold uppercase tracking-wider text-gray-500 select-none hover:text-gray-800 [&::-webkit-details-marker]:hidden">
+                      <span>
+                        Riwayat (
+                        {(isReceivedTab ? historyReceived : historySubmitted).length})
+                      </span>
+                      <ChevronDown
+                        size={15}
+                        className="transition-transform duration-150 group-open:rotate-180"
+                      />
+                    </summary>
+                    <div className="space-y-3.5 pt-1">
+                      {activeHistoryGroups.map((group) => (
+                        <ClaimGroupCard
+                          key={`history-${claimSubTab}-${group.postId}`}
+                          group={group}
+                          isReceived={isReceivedTab}
+                          isPending={false}
+                          respondDisabled={respondClaim.isPending}
+                          onOpenPost={handleOpenClaimPost}
+                          onRespond={() => {}}
+                        />
+                      ))}
+                    </div>
+                  </details>
+                )}
+              </div>
+            )}
+          </div>
         )}
       </div>
+
+      {activeModalPost && (
+        <PostDetailModal
+          post={activeModalPost}
+          onClose={() => setSelectedPost(null)}
+        />
+      )}
 
       <ConfirmDialog
         open={Boolean(claimConfirm)}
@@ -767,12 +941,10 @@ export default function Profile() {
         }
         subDescription={
           claimConfirm?.status === 'accepted'
-            ? 'Pengajuan lain pada laporan ini otomatis ditolak. Selanjutkan lakukan konfirmasi melalui WhatsApp'
+            ? 'Pengajuan lain pada laporan ini otomatis ditolak. Selanjutnya lakukan konfirmasi melalui WhatsApp.'
             : 'Pengguna tidak dapat mengakses kontak WhatsApp Anda setelah pengajuan ditolak.'
         }
-        confirmLabel={
-          claimConfirm?.status === 'accepted' ? 'Ya, Terima' : 'Ya, Tolak'
-        }
+        confirmLabel={claimConfirm?.status === 'accepted' ? 'Ya, Terima' : 'Ya, Tolak'}
         loading={respondClaim.isPending}
         onCancel={() => setClaimConfirm(null)}
         onConfirm={() => {

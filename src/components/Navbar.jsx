@@ -22,7 +22,6 @@ export default function Navbar() {
   const [searchParams, setSearchParams] = useSearchParams()
   const urlQuery = searchParams.get('q') || ''
   const [searchQuery, setSearchQuery] = useState(urlQuery)
-  const [mobileSearchOpen, setMobileSearchOpen] = useState(Boolean(urlQuery))
   const [notifOpen, setNotifOpen] = useState(false)
   const isTypingRef = useRef(false)
   const debounceTimerRef = useRef(null)
@@ -98,7 +97,7 @@ export default function Navbar() {
   }
 
   return (
-    <header className="sticky top-3 z-50 mx-auto w-full max-w-7xl px-3 sm:top-4 sm:px-4">
+    <header className="sticky top-3 z-40 mx-auto w-full max-w-7xl px-3 sm:top-4 sm:px-4">
       <div className="rounded-full bg-black/90 px-2.5 py-2 text-white shadow-xl backdrop-blur-2xl sm:px-3 sm:py-3 lg:px-4">
         <div className="flex items-center justify-between gap-2 sm:gap-3">
           {/* KIRI: Logo & Search Bar (Selalu tampil di mobile & desktop sesuai desain) */}
