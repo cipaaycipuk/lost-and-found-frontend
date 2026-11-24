@@ -298,7 +298,11 @@ export default function PostDetail({ post, onBack }) {
                 ) : post.myClaim?.status === 'pending' ? (
                   <span className="inline-flex min-h-[36px] items-center gap-1.5 rounded-full bg-amber-50 px-4 py-2 text-xs font-semibold text-amber-800">
                     <Clock size={14} />
-                    <span>Klaim Menunggu Konfirmasi</span>
+                    <span>
+                      {isKehilangan
+                        ? 'Menunggu Konfirmasi Pemilik'
+                        : 'Menunggu Konfirmasi Penemu'}
+                    </span>
                   </span>
                 ) : (
                   <button
@@ -315,7 +319,7 @@ export default function PostDetail({ post, onBack }) {
                     <HandHeart size={14} />
                     <span>
                       {post.reportMeta?.claim_action_label ||
-                        (isKehilangan ? 'Saya Menemukan Ini' : 'Ajukan Klaim')}
+                        (isKehilangan ? 'Saya Menemukan Ini' : 'Ini Barang Saya')}
                     </span>
                   </button>
                 )

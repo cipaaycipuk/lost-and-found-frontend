@@ -1,22 +1,18 @@
 import { useEffect, useState } from 'react'
 import { HandHeart, X } from 'lucide-react'
-import { useAuth } from '../context/AuthContext'
 import { useSubmitClaimMutation } from '../hooks/useClaims'
 
 export default function ClaimModal({ open, post, onClose }) {
-  const { user } = useAuth()
   const submitClaim = useSubmitClaimMutation()
   const [message, setMessage] = useState('')
-  const [whatsapp, setWhatsapp] = useState(user?.whatsapp || '')
   const [error, setError] = useState('')
 
   useEffect(() => {
     if (open) {
       setMessage('')
-      setWhatsapp(user?.whatsapp || '')
       setError('')
     }
-  }, [open, user?.whatsapp])
+  }, [open])
 
   useEffect(() => {
     if (!open) return undefined
@@ -32,9 +28,12 @@ export default function ClaimModal({ open, post, onClose }) {
   if (!open || !post) return null
 
   const isKehilangan = post.type === 'kehilangan'
-  const actionLabel =
-    post.reportMeta?.claim_action_label ||
-    (isKehilangan ? 'Saya Menemukan Ini' : 'Ajukan Klaim')
+  const modalTitle = isKehilangan
+    ? 'Laporkan Penemuan Barang'
+    : 'Ajukan Klaim Kepemilikan'
+  const submitLabel = isKehilangan
+    ? 'Kirim Laporan Penemuan'
+    : 'Ajukan Klaim'
 
   const handleSubmit = (e) => {
     e.preventDefault()
@@ -48,7 +47,6 @@ export default function ClaimModal({ open, post, onClose }) {
       {
         postId: post.id,
         message: trimmed,
-        contact_whatsapp: whatsapp.trim() || undefined,
       },
       {
         onSuccess: () => {
@@ -83,7 +81,7 @@ export default function ClaimModal({ open, post, onClose }) {
                 id="claim-modal-title"
                 className="text-base font-bold text-gray-900"
               >
-                {actionLabel}
+                {modalTitle}
               </h3>
               <p className="line-clamp-1 text-xs text-gray-500">
                 {post.title}
@@ -108,8 +106,8 @@ export default function ClaimModal({ open, post, onClose }) {
               className="mb-1.5 block text-xs font-semibold text-gray-800"
             >
               {isKehilangan
-                ? 'Keterangan Penemuan / Lokasi Saat Ini'
-                : 'Bukti / Ciri Khusus Kepemilikan'}
+                ? 'Di mana barang ditemukan / diamankan saat ini?'
+                : 'Sebutkan ciri khusus untuk membuktikan kepemilikan'}
             </label>
             <textarea
               id="claim-message"
@@ -129,23 +127,6 @@ export default function ClaimModal({ open, post, onClose }) {
             {error && <p className="mt-1 text-xs text-red-600">{error}</p>}
           </div>
 
-          <div>
-            <label
-              htmlFor="claim-whatsapp"
-              className="mb-1.5 block text-xs font-semibold text-gray-800"
-            >
-              Nomor WhatsApp Anda (ditampilkan setelah klaim diterima)
-            </label>
-            <input
-              id="claim-whatsapp"
-              type="tel"
-              value={whatsapp}
-              onChange={(e) => setWhatsapp(e.target.value)}
-              placeholder="Contoh: 081234567890"
-              className="w-full rounded-lg border border-gray-200 bg-gray-50 px-3.5 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 outline-none transition focus:border-black focus:bg-white"
-            />
-          </div>
-
           <div className="flex items-center justify-end gap-2.5 pt-1">
             <button
               type="button"
@@ -160,7 +141,7 @@ export default function ClaimModal({ open, post, onClose }) {
               disabled={submitClaim.isPending}
               className="rounded-lg bg-black px-4 py-2 text-xs font-semibold text-white transition hover:bg-neutral-800 disabled:opacity-60"
             >
-              {submitClaim.isPending ? 'Mengirim...' : 'Kirim Pengajuan'}
+              {submitClaim.isPending ? 'Mengirim...' : submitLabel}
             </button>
           </div>
         </form>

@@ -90,6 +90,10 @@ export default function PostCard({ post, isOwner = false, onSelect }) {
   return (
     <article
       onClick={handleOpenPost}
+      style={{
+        borderLeftWidth: '5px',
+        borderLeftColor: isKehilangan ? '#F05A00' : '#0026FF',
+      }}
       className={`cursor-pointer space-y-3.5 rounded-xl border border-gray-200/90 bg-white p-4 shadow-sm transition hover:border-gray-300 hover:shadow-md sm:space-y-4 sm:p-5 ${
         isDone ? 'opacity-85' : ''
       }`}
@@ -262,28 +266,30 @@ export default function PostCard({ post, isOwner = false, onSelect }) {
               <Phone size={15} />
               Hubungi WhatsApp
             </a>
-          ) : post.myClaim?.status === 'pending' ? (
-            <span className="inline-flex min-h-[36px] items-center gap-1.5 rounded-full bg-amber-50 px-3.5 py-2 text-xs font-semibold text-amber-800">
-              <Clock size={14} />
-              Klaim Menunggu Konfirmasi
-            </span>
-          ) : (
-            <button
-              type="button"
-              onClick={() => {
-                if (!user) {
-                  navigate('/login')
-                  return
-                }
-                setClaimModalOpen(true)
-              }}
-              className="inline-flex min-h-[36px] items-center gap-2 rounded-full bg-[#232323] px-3.5 py-2 text-xs font-semibold text-white transition hover:bg-neutral-800 sm:px-4 sm:text-sm"
-            >
-              <HandHeart size={15} />
-              {post.reportMeta?.claim_action_label ||
-                (isKehilangan ? 'Saya Menemukan Ini' : 'Ajukan Klaim')}
-            </button>
-          )
+            ) : post.myClaim?.status === 'pending' ? (
+              <span className="inline-flex min-h-[36px] items-center gap-1.5 rounded-full bg-amber-50 px-3.5 py-2 text-xs font-semibold text-amber-800">
+                <Clock size={14} />
+                {isKehilangan
+                  ? 'Menunggu Konfirmasi Pemilik'
+                  : 'Menunggu Konfirmasi Penemu'}
+              </span>
+            ) : (
+              <button
+                type="button"
+                onClick={() => {
+                  if (!user) {
+                    navigate('/login')
+                    return
+                  }
+                  setClaimModalOpen(true)
+                }}
+                className="inline-flex min-h-[36px] items-center gap-2 rounded-full bg-[#232323] px-3.5 py-2 text-xs font-semibold text-white transition hover:bg-neutral-800 sm:px-4 sm:text-sm"
+              >
+                <HandHeart size={15} />
+                {post.reportMeta?.claim_action_label ||
+                  (isKehilangan ? 'Saya Menemukan Ini' : 'Ini Barang Saya')}
+              </button>
+            )
         )}
       </div>
 

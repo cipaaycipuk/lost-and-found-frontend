@@ -8,7 +8,10 @@ import { usePostDetailQuery, usePostsQuery } from '../hooks/usePosts'
 
 function PostSkeleton() {
   return (
-    <div className="animate-pulse space-y-4 rounded-xl border border-gray-200 bg-white p-4 sm:p-5">
+    <div
+      style={{ borderLeftWidth: '5px', borderLeftColor: '#E5E7EB' }}
+      className="animate-pulse space-y-4 rounded-xl border border-gray-200 bg-white p-4 sm:p-5"
+    >
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="h-11 w-11 rounded-full bg-gray-200" />

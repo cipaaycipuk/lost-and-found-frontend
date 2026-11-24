@@ -1,9 +1,9 @@
 import { useState } from 'react'
 import {
   TriangleAlert,
+  ArrowRight,
   ChevronDown,
-  ChevronUp,
-  SlidersHorizontal,
+  Filter,
 } from 'lucide-react'
 import {
   Select,
@@ -45,55 +45,191 @@ export default function FilterSidebar({
   onReset,
 }) {
   const [showMoreGuide, setShowMoreGuide] = useState(false)
+  const [isMobileGuideOpen, setIsMobileGuideOpen] = useState(false)
   const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false)
 
   const activeFilterCount =
-    (activeTab !== 'Semua' ? 1 : 0) +
     (category !== 'Semua kategori' ? 1 : 0) +
     (location !== 'Semua' ? 1 : 0) +
     (sortBy !== 'Terbaru' ? 1 : 0)
 
-  const hasActiveFilters = activeFilterCount > 0
-
   return (
-    <aside className="space-y-4 lg:sticky lg:top-24 lg:col-span-4 lg:space-y-5">
-      {/* Toggle Filter Mobile-First */}
-      <div className="flex items-center justify-between gap-2 lg:hidden">
-        <button
-          type="button"
-          onClick={() => setIsMobileFilterOpen((prev) => !prev)}
-          aria-expanded={isMobileFilterOpen}
-          className="inline-flex flex-1 items-center justify-between rounded-xl border border-gray-200 bg-white px-4 py-3 text-xs font-semibold text-gray-800 shadow-sm transition hover:bg-gray-50"
-        >
-          <span className="inline-flex items-center gap-2">
-            <SlidersHorizontal size={15} />
-            Filter &amp; Urutkan
+    <aside className="space-y-3 lg:sticky lg:top-24 lg:col-span-4 lg:space-y-5">
+      {/* === MOBILE (< lg) === */}
+      <div className="space-y-3 lg:hidden">
+        {/* 1. Panduan Singkat Keamanan (Compact Mobile Banner) */}
+        <div className="rounded-xl border border-gray-200/80 bg-white shadow-xs">
+          <button
+            type="button"
+            onClick={() => setIsMobileGuideOpen((prev) => !prev)}
+            className="flex w-full items-center justify-between px-4 py-3 text-left"
+          >
+            <span className="flex items-center gap-2 text-xs font-semibold text-gray-900">
+              <TriangleAlert size={16} className="shrink-0 text-[#F05A00]" />
+              Panduan Singkat Keamanan
+            </span>
+            <ArrowRight
+              size={15}
+              className={`text-gray-500 transition-transform ${
+                isMobileGuideOpen ? 'rotate-90' : ''
+              }`}
+            />
+          </button>
+
+          {isMobileGuideOpen && (
+            <ul className="list-disc space-y-1.5 border-t border-gray-100 px-8 py-3 text-xs leading-relaxed text-gray-700">
+              <li>Jangan tulis info pribadi (PIN, nomor KTM) di deskripsi.</li>
+              <li>Minta pemilik menyebut ciri barang sebelum menyerahkan.</li>
+              <li>Bertemu di tempat ramai di area kampus.</li>
+              <li>
+                Untuk barang berharga, titipkan di pos satpam atau bagian
+                kemahasiswaan terdekat.
+              </li>
+            </ul>
+          )}
+        </div>
+
+        {/* 2. Tabs Horizontal Underline: Semua | Kehilangan | Ditemukan */}
+        <div className="grid grid-cols-3 border-b border-gray-200">
+          {['Semua', 'Kehilangan', 'Ditemukan'].map((tab) => {
+            const isActive = activeTab === tab
+            return (
+              <button
+                key={tab}
+                type="button"
+                onClick={() => setActiveTab(tab)}
+                className={`-mb-px border-b-2 pb-2.5 text-center text-xs font-semibold transition ${
+                  isActive
+                    ? 'border-black text-black'
+                    : 'border-transparent text-gray-400 hover:text-gray-700'
+                }`}
+              >
+                {tab}
+              </button>
+            )
+          })}
+        </div>
+
+        {/* 3. Bar Filter & Sort Mobile */}
+        <div className="flex items-center justify-between gap-2">
+          <button
+            type="button"
+            onClick={() => setIsMobileFilterOpen(true)}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold text-gray-800 shadow-xs transition hover:bg-gray-50"
+          >
+            <Filter size={13} />
+            <span>Filter</span>
             {activeFilterCount > 0 && (
-              <span className="rounded-full bg-[#e0531c] px-2 py-0.5 text-[11px] font-bold text-white tabular-nums">
+              <span className="rounded-full bg-[#e0531c] px-1.5 py-0.5 text-[10px] font-bold text-white tabular-nums">
                 {activeFilterCount}
               </span>
             )}
-          </span>
-          {isMobileFilterOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-        </button>
+          </button>
 
-        {hasActiveFilters && (
           <button
             type="button"
-            onClick={onReset}
-            className="rounded-xl border border-gray-200 bg-white px-3.5 py-3 text-xs font-semibold text-gray-600 shadow-sm transition hover:text-black"
+            onClick={() =>
+              setSortBy((prev) => (prev === 'Terbaru' ? 'Terlama' : 'Terbaru'))
+            }
+            className="inline-flex items-center gap-1 text-xs font-medium text-gray-700"
           >
-            Reset
+            <span>{sortBy}</span>
+            <ChevronDown size={13} />
           </button>
-        )}
+        </div>
       </div>
 
-      {/* Filter Controls langsung di atas latar halaman (tanpa kotak pembungkus) */}
-      <div
-        className={`${
-          isMobileFilterOpen ? 'block' : 'hidden'
-        } space-y-4 lg:block`}
-      >
+      {/* === MOBILE FILTER MODAL / SHEET === */}
+      {isMobileFilterOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-0 backdrop-blur-[2px] sm:items-center sm:p-4 lg:hidden"
+          onClick={() => setIsMobileFilterOpen(false)}
+        >
+          <div
+            className="w-full max-w-md space-y-4 rounded-t-2xl bg-white p-5 shadow-2xl sm:rounded-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between">
+              <h3 className="text-base font-bold text-gray-900">Filter</h3>
+              <button
+                type="button"
+                onClick={onReset}
+                className="text-xs font-medium text-gray-500 underline underline-offset-4 hover:text-black"
+              >
+                Reset
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              <div>
+                <label className="mb-1.5 block text-xs font-medium text-gray-600">
+                  Kategori
+                </label>
+                <Select value={category} onValueChange={setCategory}>
+                  <SelectTrigger className="h-10 w-full rounded-lg border border-gray-200 bg-white text-xs font-medium text-gray-900">
+                    <SelectValue placeholder="Pilih kategori" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {CATEGORIES.map((item) => (
+                      <SelectItem key={item} value={item} className="text-xs">
+                        {item}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <label className="mb-1.5 block text-xs font-medium text-gray-600">
+                  Lokasi
+                </label>
+                <Select value={location} onValueChange={setLocation}>
+                  <SelectTrigger className="h-10 w-full rounded-lg border border-gray-200 bg-white text-xs font-medium text-gray-900">
+                    <SelectValue placeholder="Pilih lokasi" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {LOCATIONS.map((loc) => (
+                      <SelectItem key={loc} value={loc} className="text-xs">
+                        {loc}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <label className="mb-1.5 block text-xs font-medium text-gray-600">
+                  Urutkan
+                </label>
+                <Select value={sortBy} onValueChange={setSortBy}>
+                  <SelectTrigger className="h-10 w-full rounded-lg border border-gray-200 bg-white text-xs font-medium text-gray-900">
+                    <SelectValue placeholder="Urutkan" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Terbaru" className="text-xs">
+                      Terbaru
+                    </SelectItem>
+                    <SelectItem value="Terlama" className="text-xs">
+                      Terlama
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setIsMobileFilterOpen(false)}
+              className="mt-2 w-full rounded-lg bg-[#1C1C1C] py-2.5 text-xs font-semibold text-white transition hover:bg-neutral-800"
+            >
+              Tampilkan hasil
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* === DESKTOP (lg+) === */}
+      <div className="hidden space-y-4 lg:block">
         <div>
           <label className="mb-2 block text-xs font-medium text-gray-500">
             Jenis Laporan
@@ -199,12 +335,8 @@ export default function FilterSidebar({
         </button>
       </div>
 
-      {/* Panduan Keamanan */}
-      <div
-        className={`${
-          isMobileFilterOpen ? 'block' : 'hidden'
-        } space-y-3 rounded-xl border border-gray-200/80 bg-white p-4 shadow-sm sm:p-5 lg:block`}
-      >
+      {/* Panduan Keamanan Desktop */}
+      <div className="hidden space-y-3 rounded-xl border border-gray-200/80 bg-white p-5 shadow-sm lg:block">
         <div className="flex items-center gap-2 text-sm font-bold leading-tight text-gray-900">
           <TriangleAlert size={17} className="shrink-0 text-[#F05A00]" />
           <span>Panduan Singkat Keamanan</span>

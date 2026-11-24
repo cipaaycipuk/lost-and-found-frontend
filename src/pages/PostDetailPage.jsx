@@ -10,6 +10,7 @@ function DetailModalSkeleton({ onClose }) {
       onClick={onClose}
     >
       <div
+        style={{ borderLeftWidth: '5px', borderLeftColor: '#E5E7EB' }}
         className="mx-auto max-w-2xl animate-pulse space-y-5 rounded-xl border border-gray-200 bg-white p-5 shadow-2xl sm:p-6"
         onClick={(e) => e.stopPropagation()}
       >

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
-import { Bell, Plus, Search, ShieldCheck, User, X, CheckCheck } from 'lucide-react'
+import { Bell, Menu, Plus, Search, ShieldCheck, User, X, CheckCheck } from 'lucide-react'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -99,10 +99,10 @@ export default function Navbar() {
 
   return (
     <header className="sticky top-3 z-50 mx-auto w-full max-w-7xl px-3 sm:top-4 sm:px-4">
-      <div className="rounded-2xl bg-black/90 px-3 py-2.5 text-white shadow-xl backdrop-blur-2xl sm:rounded-full sm:py-3 lg:px-4">
+      <div className="rounded-full bg-black/90 px-2.5 py-2 text-white shadow-xl backdrop-blur-2xl sm:px-3 sm:py-3 lg:px-4">
         <div className="flex items-center justify-between gap-2 sm:gap-3">
-          {/* KIRI: Logo & Search Bar Desktop */}
-          <div className="flex flex-1 items-center gap-2.5 sm:gap-3">
+          {/* KIRI: Logo & Search Bar (Selalu tampil di mobile & desktop sesuai desain) */}
+          <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
             <Link
               to="/"
               aria-label="Beranda Lost & Found"
@@ -115,19 +115,18 @@ export default function Navbar() {
               />
             </Link>
 
-            {/* Desktop Search */}
             <form
               onSubmit={handleSearchSubmit}
-              className="hidden w-full max-w-sm items-center rounded-full bg-white/15 px-3.5 py-1 text-sm text-white transition focus-within:bg-white/25 focus-within:ring-2 focus-within:ring-white/30 sm:flex lg:max-w-md"
+              className="flex min-w-0 flex-1 items-center rounded-full bg-white/15 px-3 py-1 text-sm text-white transition focus-within:bg-white/25 sm:max-w-sm lg:max-w-md"
             >
               <Search className="mr-2 h-4 w-4 shrink-0 text-gray-300" />
               <Input
                 type="text"
                 aria-label="Cari barang hilang atau ditemukan"
-                placeholder="Cari barang hilang atau ditemukan..."
+                placeholder="Cari barang..."
                 value={searchQuery}
                 onChange={(e) => handleSearchChange(e.target.value)}
-                className="h-8 w-full border-0 bg-transparent px-0 text-sm text-white shadow-none placeholder:text-gray-300 focus-visible:ring-0"
+                className="h-7 w-full border-0 bg-transparent px-0 text-xs text-white shadow-none placeholder:text-gray-300 focus:bg-transparent focus-visible:bg-transparent focus-visible:ring-0 sm:h-8 sm:text-sm"
               />
               {searchQuery && (
                 <button
@@ -142,25 +141,14 @@ export default function Navbar() {
             </form>
           </div>
 
-          {/* KANAN: Mobile Search Toggle, Tombol Laporan, Admin, Notifikasi & Profil */}
-          <div className="flex items-center gap-1.5 sm:gap-2.5">
-            <button
-              type="button"
-              aria-label="Buka pencarian"
-              aria-expanded={mobileSearchOpen}
-              onClick={() => setMobileSearchOpen((prev) => !prev)}
-              className="rounded-full p-2 text-gray-300 transition hover:bg-white/10 hover:text-white sm:hidden"
-            >
-              {mobileSearchOpen ? <X className="h-5 w-5" /> : <Search className="h-5 w-5" />}
-            </button>
-
+          {/* KANAN: Desktop actions + Mobile Bell & Hamburger */}
+          <div className="flex shrink-0 items-center gap-1 sm:gap-2.5">
             <Link
               to="/buat-laporan"
-              className="inline-flex items-center gap-1.5 rounded-full bg-[#e0531c] px-3 py-2 text-xs font-semibold text-white transition hover:bg-[#c84615] active:scale-95 sm:px-3.5 sm:text-sm lg:px-4"
+              className="hidden sm:inline-flex items-center gap-1.5 rounded-full bg-[#e0531c] px-3.5 py-2 text-sm font-semibold text-white transition hover:bg-[#c84615] active:scale-95 lg:px-4"
             >
               <Plus className="h-4 w-4" />
-              <span className="hidden sm:inline">Buat Laporan</span>
-              <span className="sm:hidden">Lapor</span>
+              <span>Buat Laporan</span>
             </Link>
 
             {isAuthenticated && user?.role === 'admin' && (
@@ -168,7 +156,7 @@ export default function Navbar() {
                 to="/admin"
                 aria-label="Dashboard Admin"
                 title="Dashboard Admin"
-                className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-2 text-xs font-semibold transition sm:px-3 ${
+                className={`hidden sm:inline-flex items-center gap-1.5 rounded-full px-3 py-2 text-xs font-semibold transition ${
                   location.pathname.startsWith('/admin')
                     ? 'bg-white text-black'
                     : 'bg-white/10 text-white hover:bg-white/20'
@@ -250,11 +238,11 @@ export default function Navbar() {
               </DropdownMenuContent>
             </DropdownMenu>
 
-            {/* Profil / Login */}
+            {/* Desktop: Profil / Login */}
             <Link
               to={isAuthenticated ? '/profile' : '/login'}
               aria-label={isAuthenticated ? 'Profil saya' : 'Masuk akun'}
-              className="flex items-center gap-2 rounded-full p-0.5 text-gray-300 transition hover:bg-white/10 hover:text-white sm:p-1"
+              className="hidden sm:flex items-center gap-2 rounded-full p-1 text-gray-300 transition hover:bg-white/10 hover:text-white"
             >
               {isAuthenticated && (user?.avatar_url || user?.avatar) ? (
                 <img
@@ -268,38 +256,59 @@ export default function Navbar() {
                 </span>
               )}
             </Link>
+
+            {/* Mobile: Hamburger Menu */}
+            <DropdownMenu>
+              <DropdownMenuTrigger
+                aria-label="Menu navigasi"
+                className="inline-flex h-9 w-9 items-center justify-center rounded-full text-gray-200 outline-none transition hover:bg-white/10 sm:hidden"
+              >
+                <Menu className="h-5 w-5" />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent
+                align="end"
+                sideOffset={12}
+                className="w-48 rounded-2xl border border-gray-200 bg-white p-1.5 text-gray-900 shadow-xl"
+              >
+                <DropdownMenuItem
+                  onClick={() => navigate(isAuthenticated ? '/profile' : '/login')}
+                  className="cursor-pointer rounded-xl px-3 py-2.5 text-sm font-medium"
+                >
+                  <User className="mr-2 h-4 w-4" />
+                  {isAuthenticated ? 'Profil Saya' : 'Masuk Akun'}
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => navigate('/buat-laporan')}
+                  className="cursor-pointer rounded-xl px-3 py-2.5 text-sm font-medium text-[#e0531c]"
+                >
+                  <Plus className="mr-2 h-4 w-4" />
+                  Buat Laporan
+                </DropdownMenuItem>
+                {isAuthenticated && user?.role === 'admin' && (
+                  <DropdownMenuItem
+                    onClick={() => navigate('/admin')}
+                    className="cursor-pointer rounded-xl px-3 py-2.5 text-sm font-medium"
+                  >
+                    <ShieldCheck className="mr-2 h-4 w-4" />
+                    Dashboard Admin
+                  </DropdownMenuItem>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
-
-        {/* Mobile Expandable Search Bar */}
-        {mobileSearchOpen && (
-          <form
-            onSubmit={handleSearchSubmit}
-            className="mt-2.5 flex items-center rounded-xl bg-white/15 px-3 py-1.5 text-sm text-white transition focus-within:bg-white/25 focus-within:ring-2 focus-within:ring-white/30 sm:hidden"
-          >
-            <Search className="mr-2 h-4 w-4 shrink-0 text-gray-300" />
-            <Input
-              type="text"
-              autoFocus
-              aria-label="Cari barang hilang atau ditemukan"
-              placeholder="Cari barang hilang atau ditemukan..."
-              value={searchQuery}
-              onChange={(e) => handleSearchChange(e.target.value)}
-              className="h-8 w-full border-0 bg-transparent px-0 text-sm text-white shadow-none placeholder:text-gray-300 focus-visible:ring-0"
-            />
-            {searchQuery && (
-              <button
-                type="button"
-                aria-label="Hapus pencarian"
-                onClick={handleClearSearch}
-                className="ml-1.5 rounded-full p-1 text-gray-300 transition hover:bg-white/20 hover:text-white"
-              >
-                <X className="h-3.5 w-3.5" />
-              </button>
-            )}
-          </form>
-        )}
       </div>
+
+      {/* Mobile Floating Action Button (+) */}
+      {location.pathname !== '/buat-laporan' && (
+        <Link
+          to="/buat-laporan"
+          aria-label="Buat Laporan Baru"
+          className="fixed bottom-5 right-5 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-[#e0531c] text-white shadow-xl transition hover:bg-[#c84615] active:scale-95 sm:hidden"
+        >
+          <Plus className="h-7 w-7" />
+        </Link>
+      )}
     </header>
   )
 }

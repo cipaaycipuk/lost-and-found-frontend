@@ -7,6 +7,7 @@ import {
   Camera,
   Check,
   Loader2,
+  Mail,
   Phone,
   X,
 } from 'lucide-react'
@@ -235,14 +236,14 @@ export default function Profile() {
         </div>
       )}
 
-      {/* Header profil */}
-      <section className="mb-10 flex flex-col items-center gap-6 text-center sm:flex-row sm:items-start sm:gap-10 sm:text-left">
+      {/* Header profil: Horizontal ringkas di mobile sesuai gambar, besar di sm+ */}
+      <section className="mb-6 flex flex-row items-start gap-4 text-left sm:mb-10 sm:gap-10">
         {/* Avatar: overlay ganti foto hanya muncul saat mode Edit Profil aktif */}
         <div className="group relative shrink-0">
           <Avatar
             src={activeUser.avatar_url || activeUser.avatar}
             name={activeUser.name}
-            className="size-36 text-4xl sm:size-[160px] sm:text-6xl"
+            className="size-20 text-2xl sm:size-[160px] sm:text-6xl"
           />
 
           {isOwnProfile && isEditing && (
@@ -278,7 +279,7 @@ export default function Profile() {
         </div>
 
         <div className="w-full min-w-0 flex-1">
-          <div className="flex flex-col items-center gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div className="flex flex-col items-start gap-3 sm:flex-row sm:justify-between sm:gap-4">
             <div className="w-full min-w-0 flex-1">
               {isEditing ? (
                 <input
@@ -287,24 +288,24 @@ export default function Profile() {
                   onChange={(e) => setEditName(e.target.value)}
                   placeholder="Nama Lengkap"
                   autoFocus
-                  className="w-full border-b-2 border-black bg-transparent pb-1 text-center text-3xl font-bold outline-none sm:text-left sm:text-4xl"
+                  className="w-full border-b-2 border-black bg-transparent pb-1 text-left text-xl font-bold outline-none sm:text-4xl"
                 />
               ) : (
-                <h1 className="text-3xl font-bold sm:text-4xl">{activeUser.name}</h1>
+                <h1 className="text-lg font-bold sm:text-4xl">{activeUser.name}</h1>
               )}
 
               {/* Email & WhatsApp HANYA ditampilkan di profil diri sendiri */}
               {isOwnProfile && (
                 <>
                   {activeUser.email && (
-                    <p className="mt-1 break-all text-base text-gray-600 sm:break-normal sm:text-lg">
+                    <p className="mt-0.5 break-all text-xs text-gray-600 sm:mt-1 sm:break-normal sm:text-lg">
                       {activeUser.email}
                     </p>
                   )}
 
                   {isEditing ? (
-                    <div className="mt-2 flex items-center justify-center gap-2 sm:justify-start">
-                      <span className="text-base font-medium text-gray-600 sm:text-lg">
+                    <div className="mt-2 flex items-center gap-2">
+                      <span className="text-xs font-medium text-gray-600 sm:text-lg">
                         Whatsapp:
                       </span>
                       <input
@@ -312,11 +313,11 @@ export default function Profile() {
                         value={editWhatsapp}
                         onChange={(e) => setEditWhatsapp(e.target.value)}
                         placeholder="Contoh: 081234567890"
-                        className="w-52 border-b-2 border-black bg-transparent pb-0.5 text-base font-medium outline-none sm:text-lg"
+                        className="w-40 border-b-2 border-black bg-transparent pb-0.5 text-xs font-medium outline-none sm:w-52 sm:text-lg"
                       />
                     </div>
                   ) : (
-                    <p className="mt-1 text-base sm:text-lg">
+                    <p className="mt-0.5 text-xs sm:mt-1 sm:text-lg">
                       Whatsapp:{' '}
                       <span className={activeUser.whatsapp ? '' : 'italic text-amber-600'}>
                         {activeUser.whatsapp || 'Belum diisi'}
@@ -325,7 +326,7 @@ export default function Profile() {
                   )}
 
                   {activeUser.auth_provider && (
-                    <div className="mt-2.5 flex flex-wrap items-center justify-center gap-1.5 sm:justify-start">
+                    <div className="mt-2.5 hidden flex-wrap items-center gap-1.5 sm:flex">
                       {String(activeUser.auth_provider)
                         .split(',')
                         .map((prov) => (
@@ -342,7 +343,7 @@ export default function Profile() {
               )}
 
               {!isOwnProfile && (
-                <p className="mt-1.5 text-sm text-gray-500">
+                <p className="mt-1 text-xs text-gray-500 sm:text-sm">
                   Profil Publik Kampus Widyatama
                 </p>
               )}
@@ -536,7 +537,9 @@ export default function Profile() {
                                         <strong className="font-bold text-gray-900">
                                           {actor?.name}
                                         </strong>{' '}
-                                        Mengajukan klaim atas barang ini
+                                        {isKehilangan
+                                          ? 'melaporkan telah menemukan barang ini'
+                                          : 'mengajukan klaim kepemilikan barang ini'}
                                       </p>
                                       <p className="mt-0.5 text-[11px] text-gray-400">
                                         {formatTimeAgo(claim.created_at || claim.createdAt)} • Lanjut di verifikasi via Whatsapp
@@ -557,6 +560,7 @@ export default function Profile() {
                                         setClaimConfirm({
                                           claim,
                                           postTitle: group.post?.title,
+                                          postType: group.post?.type,
                                           status: 'rejected',
                                         })
                                       }
@@ -571,6 +575,7 @@ export default function Profile() {
                                         setClaimConfirm({
                                           claim,
                                           postTitle: group.post?.title,
+                                          postType: group.post?.type,
                                           status: 'accepted',
                                         })
                                       }
@@ -654,6 +659,11 @@ export default function Profile() {
                                       `Halo ${person?.name || ''}, terkait klaim laporan "${group.post?.title || ''}" di Lost & Found.`
                                     )
                                   : null
+                              const targetEmail = person?.email
+                              const mailUrl =
+                                claim.status === 'accepted' && !targetWa && targetEmail
+                                  ? `mailto:${targetEmail}?subject=${encodeURIComponent(`Klaim Lost & Found: ${group.post?.title || ''}`)}`
+                                  : null
                               return (
                                 <div
                                   key={claim.id}
@@ -680,7 +690,7 @@ export default function Profile() {
                                     </div>
                                   </div>
 
-                                  {targetWa && (
+                                  {targetWa ? (
                                     <a
                                       href={targetWa}
                                       target="_blank"
@@ -690,6 +700,16 @@ export default function Profile() {
                                       <Phone size={13} />
                                       Hubungi WhatsApp
                                     </a>
+                                  ) : (
+                                    mailUrl && (
+                                      <a
+                                        href={mailUrl}
+                                        className="inline-flex w-fit items-center gap-1.5 rounded-full border border-gray-300 bg-white px-3.5 py-1.5 text-xs font-semibold text-gray-800 transition hover:bg-gray-50"
+                                      >
+                                        <Mail size={13} />
+                                        Hubungi Email
+                                      </a>
+                                    )
                                   )}
                                 </div>
                               )
@@ -711,8 +731,12 @@ export default function Profile() {
         variant={claimConfirm?.status === 'rejected' ? 'danger' : 'warning'}
         title={
           claimConfirm?.status === 'accepted'
-            ? 'Terima pengajuan ini?'
-            : 'Tolak pengajuan ini?'
+            ? claimConfirm?.postType === 'kehilangan'
+              ? 'Terima laporan penemuan?'
+              : 'Terima pengajuan klaim?'
+            : claimConfirm?.postType === 'kehilangan'
+              ? 'Tolak laporan penemuan?'
+              : 'Tolak pengajuan klaim?'
         }
         description={
           claimConfirm?.status === 'accepted' ? (
